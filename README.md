@@ -4,7 +4,7 @@
 
 **A private voice gateway for your smart home on macOS.**
 
-Speak naturally in German or English. HomeEar listens and filters locally, then passes likely requests to your Poke agent. If you've connected Philips Hue, Home Assistant, or another smart-home service to Poke, your agent can use those connections to help with your home.
+Keep HomeEar running in the menu bar throughout the day, if you choose. It continuously listens for likely commands in German or English, filters speech on your Mac, and passes matching requests to your Poke agent. If you've connected Philips Hue, Home Assistant, or another smart-home service to Poke, your agent can use those connections to help with your home.
 
 *Native menu bar UI · local speech recognition · Poke voice replies*
 
@@ -12,9 +12,9 @@ Speak naturally in German or English. HomeEar listens and filters locally, then 
 
 > **Development status:** This repository is a work in progress. The CI artifact is unsigned and unnotarized. There is no supported release or automatic installer yet.
 
-## What it feels like
+## The idea: an always-available home assistant
 
-Ask for the lights in the living room, a warmer bedroom, or a scene you use at night. HomeEar turns speech into a text request for Poke. Poke decides what to do through **your own connected integrations** and can call HomeEar's local voice tool to speak a reply on your Mac.
+With the microphone enabled and the Mac awake, HomeEar can stay active around the clock and respond whenever you speak a likely command. You don't have to open an app or press a button for every request. For example, ask for the lights in the living room, a warmer bedroom, or a scene you use at night. HomeEar turns speech into a text request for Poke. Poke decides what to do through **your own connected integrations** and can call HomeEar's local voice tool to speak a reply on your Mac. If you configure proactive automations in Poke or your connected smart-home system, those services may also change your home without a new spoken command; HomeEar itself does not schedule, infer, or initiate autonomous home actions.
 
 HomeEar does **not** control Hue or Home Assistant directly, and it doesn't create those Poke connections for you. Set them up in Poke first. What commands work depends on your Poke setup and the capabilities of each connected service.
 
@@ -51,5 +51,3 @@ xcodebuild -project HomeEar.xcodeproj -scheme HomeEar -configuration Release -ar
 ```
 
 The CI workflow pins and checksums the bundled Node/Poke runtime. Never commit API keys, login tokens, or personal recordings.
-
-Author: **Malte**.
