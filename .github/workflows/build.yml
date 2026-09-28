@@ -37,6 +37,11 @@ jobs:
           APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
           test -n "$APP"
           test -x "$APP/Contents/MacOS/HomeEar"
+          test -x "$APP/Contents/Resources/Runtime/node"
+          test -s "$APP/Contents/Resources/Runtime/poke.cjs"
+          "$APP/Contents/Resources/Runtime/node" --version
+          "$APP/Contents/Resources/Runtime/node" "$APP/Contents/Resources/Runtime/poke.cjs" --version
+          find "$APP/Contents/Resources/Runtime" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null || ls -la "$APP/Contents/Resources/Runtime"
           ditto -c -k --keepParent "$APP" HomeEar-dev.zip
       - uses: actions/upload-artifact@v4
         with:
