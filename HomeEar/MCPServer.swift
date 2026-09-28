@@ -29,30 +29,51 @@ import Network
 
     private func handle(_ connection: NWConnection) {
         connection.start(queue: .global(qos: .userInitiated))
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, _ in
+        receive(on: connection, accumulated: Data())
+    }
+
+    // TCP is a byte stream, not a request-message stream. Neither the headers
+    // nor the JSON body is guaranteed to arrive in one receive callback.
+    private func receive(on connection: NWConnection, accumulated: Data) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] chunk, _, complete, error in
             Task { @MainActor in
-                guard let self, let data else { connection.cancel(); return }
-                self.respond(to: data, on: connection)
+                guard let self else { connection.cancel(); return }
+                guard error == nil else { connection.cancel(); return }
+                let bytes = accumulated + (chunk ?? Data())
+                guard bytes.count <= 65536 else {
+                    self.send(["error": "Request too large"], code: 413, on: connection); return
+                }
+                self.respond(to: bytes, complete: complete, on: connection)
             }
         }
     }
-    private func respond(to data: Data, on connection: NWConnection) {
-        guard let split = data.range(of: Data("\r\n\r\n".utf8)),
-              let header = String(data: data[..<split.lowerBound], encoding: .utf8),
-              header.hasPrefix("POST /mcp "),
-              let lengthLine = header.split(separator: "\r\n").first(where: { $0.lowercased().hasPrefix("content-length:") }),
+
+    private func respond(to data: Data, complete: Bool, on connection: NWConnection) {
+        guard let split = data.range(of: Data("\r\n\r\n".utf8)) else {
+            if complete { connection.cancel() }
+            else { receive(on: connection, accumulated: data) }
+            return
+        }
+        guard let header = String(data: data[..<split.lowerBound], encoding: .utf8) else {
+            send(["error": "Invalid HTTP headers"], code: 400, on: connection); return
+        }
+        let lines = header.components(separatedBy: "\r\n")
+        let requestLine = lines.first ?? ""
+        guard requestLine.hasPrefix("POST /mcp ") else {
+            // The first line alone is safe to surface; never echo auth headers or body.
+            let methodAndPath = requestLine.split(separator: " ").prefix(2).joined(separator: " ")
+            send(["error": "Unsupported HTTP route: \(methodAndPath.prefix(120))"], code: 400, on: connection); return
+        }
+        guard let lengthLine = lines.first(where: { $0.lowercased().hasPrefix("content-length:") }),
               let length = Int(lengthLine.split(separator: ":", maxSplits: 1).last?.trimmingCharacters(in: .whitespaces) ?? ""),
               length >= 0, length <= 32768 else {
-            send(["error": "Unsupported request"], code: 400, on: connection); return
+            let chunked = lines.contains { $0.lowercased().hasPrefix("transfer-encoding:") }
+            send(["error": chunked ? "Chunked transfer not supported" : "Missing or invalid Content-Length"], code: 400, on: connection); return
         }
         let available = data.distance(from: split.upperBound, to: data.endIndex)
         if available < length {
-            connection.receive(minimumIncompleteLength: length - available, maximumLength: 32768) { [weak self] rest, _, _, _ in
-                Task { @MainActor in
-                    guard let self, let rest else { connection.cancel(); return }
-                    self.process(Data(data[split.upperBound...]) + rest, on: connection)
-                }
-            }
+            if complete { connection.cancel() }
+            else { receive(on: connection, accumulated: data) }
         } else { process(Data(data[split.upperBound...].prefix(length)), on: connection) }
     }
     private func process(_ body: Data, on connection: NWConnection) {
