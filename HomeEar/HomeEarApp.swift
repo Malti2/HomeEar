@@ -1,25 +1,31 @@
 import SwiftUI
+import AppKit
 
 @main struct HomeEarApp: App {
     @StateObject private var state = AppState()
-    @State private var onboarding = false
     var body: some Scene {
         MenuBarExtra("HomeEar", systemImage: state.microphoneOn ? "waveform" : "waveform.slash") {
-            PanelView(state: state, onboarding: $onboarding)
+            PanelView(state: state)
                 .frame(width: 350)
-                .onAppear { if !state.completedSetup { onboarding = true } }
         }
         .menuBarExtraStyle(.window)
         Window("HomeEar Setup", id: "setup") {
-            OnboardingView(state: state).frame(minWidth: 540, minHeight: 440)
+            OnboardingView(state: state)
+                .frame(minWidth: 540, minHeight: 440)
+                .onAppear { bringSetupForward() }
         }
         .defaultSize(width: 560, height: 470)
+    }
+    private func bringSetupForward() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first(where: { $0.title == "HomeEar Setup" })?.makeKeyAndOrderFront(nil)
+        }
     }
 }
 
 struct PanelView: View {
     @ObservedObject var state: AppState
-    @Binding var onboarding: Bool
     @Environment(\.openWindow) private var openWindow
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -49,7 +55,13 @@ struct PanelView: View {
                     state.microphoneOn ? state.stop() : state.start()
                 }.buttonStyle(.borderedProminent)
                 Spacer()
-                Button("Settings") { openWindow(id: "setup") }
+                Button("Settings") {
+                    openWindow(id: "setup")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        NSApp.activate(ignoringOtherApps: true)
+                        NSApp.windows.first(where: { $0.title == "HomeEar Setup" })?.makeKeyAndOrderFront(nil)
+                    }
+                }
             }
             HStack {
                 Button("Check updates") { state.updates.check() }
