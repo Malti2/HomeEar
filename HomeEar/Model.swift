@@ -3,7 +3,7 @@ import Security
 import ServiceManagement
 import Combine
 
-protocol AgentBackend {
+protocol AgentBackend: Sendable {
     func send(_ text: String) async throws
 }
 
