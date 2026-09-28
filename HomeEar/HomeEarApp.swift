@@ -37,6 +37,7 @@ struct PanelView: View {
                 StatusRow(icon: "waveform", label: "Speech", value: state.speechState)
                 StatusRow(icon: "paperplane", label: "Poke API", value: state.apiState)
                 StatusRow(icon: "speaker.wave.2", label: "Voice tool", value: state.ttsState)
+                StatusRow(icon: "network", label: "Poke tunnel", value: state.tunnel.state)
             }
             VStack(alignment: .leading, spacing: 7) {
                 Text("RECENT ACTIVITY").font(.caption2.weight(.bold)).foregroundStyle(.secondary)
