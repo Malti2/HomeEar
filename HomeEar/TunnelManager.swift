@@ -85,7 +85,7 @@ import AppKit
             if let range = capture.range(of: #"Your login code is:\s*([A-Za-z0-9-]+)"#, options: .regularExpression) {
                 loginCode = String(capture[range]).replacingOccurrences(of: "Your login code is:", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             }
-        } else if capture.localizedCaseInsensitiveContains("connected") || capture.localizedCaseInsensitiveContains("tunnel active") {
+        } else if capture.localizedCaseInsensitiveContains("connected to upstream") || capture.localizedCaseInsensitiveContains("tunnel is active!") {
             state = "Poke voice tunnel connected"
             reconnects = 0
         }
