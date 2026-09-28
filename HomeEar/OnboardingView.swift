@@ -60,8 +60,12 @@ struct OnboardingView: View {
                         Text("HomeEar forwards likely requests automatically when listening. You can pause the microphone from the menu bar.")
                         Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))
                         Toggle("Strict request filter", isOn: $state.strictFilter)
-                        Text("Voice replies require Poke CLI (Node.js). Sign in with npx poke@latest login in Terminal first. Outbound forwarding works without the tunnel.").font(.caption).foregroundStyle(.secondary)
-                        Button("Start Poke voice tunnel") { state.tunnel.start() }
+                        Text("The Poke runtime is included. Sign in once through your browser; HomeEar starts the voice tunnel and reconnects it automatically. Outbound requests still work if the tunnel is offline.").font(.caption).foregroundStyle(.secondary)
+                        Button(state.tunnel.hasCredentials ? "Connect voice tunnel" : "Sign in to Poke") { state.tunnel.start() }
+                        if state.tunnel.loginURL != nil {
+                            Button("Open Poke sign-in") { state.tunnel.openLogin() }
+                            if !state.tunnel.loginCode.isEmpty { Text("Code: \(state.tunnel.loginCode)").font(.caption.monospaced()) }
+                        }
                         Text(state.tunnel.state).font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -75,6 +79,7 @@ struct OnboardingView: View {
                         state.completedSetup = true
                         UserDefaults.standard.set(true, forKey: "setupComplete")
                         if !state.microphoneOn { state.start() }
+                        state.tunnel.start()
                         NSApplication.shared.keyWindow?.close()
                     }.buttonStyle(.borderedProminent).disabled(KeyStore.load() == nil)
                 }
