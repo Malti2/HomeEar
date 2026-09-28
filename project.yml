@@ -14,6 +14,10 @@ targets:
     platform: macOS
     sources:
       - path: HomeEar
+        excludes:
+          - Runtime
+      - path: HomeEar/Runtime
+        type: folder
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.homeear.HomeEar
