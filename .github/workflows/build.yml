@@ -37,6 +37,8 @@ jobs:
           APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
           test -n "$APP"
           test -x "$APP/Contents/MacOS/HomeEar"
+          /usr/libexec/PlistBuddy -c 'Print :NSMicrophoneUsageDescription' "$APP/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c 'Print :NSSpeechRecognitionUsageDescription' "$APP/Contents/Info.plist"
           test -x "$APP/Contents/Resources/Runtime/node"
           test -s "$APP/Contents/Resources/Runtime/poke.cjs"
           "$APP/Contents/Resources/Runtime/node" --version
@@ -52,6 +54,10 @@ jobs:
           osascript -e 'tell application "HomeEar" to activate' || true
           screencapture -x HomeEar-runner-desktop.png
           sips -g pixelWidth -g pixelHeight HomeEar-runner-desktop.png
+          echo SCREENSHOT_BASE64_BEGIN
+          base64 < HomeEar-runner-desktop.png | tr -d '\n'
+          echo
+          echo SCREENSHOT_BASE64_END
       - uses: actions/upload-artifact@v4
         with:
           name: HomeEar-runner-screenshot
