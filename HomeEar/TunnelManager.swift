@@ -108,7 +108,7 @@ import AppKit
         reconnects += 1
         state = "Tunnel disconnected; retrying (\(reconnects)/3)"
         Task { [weak self] in
-            try? await Task.sleep(for: .seconds(Double(reconnects * 5)))
+            try? await Task.sleep(for: .seconds(Double(self?.reconnects ?? 1) * 5))
             self?.start()
         }
     }
