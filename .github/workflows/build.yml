@@ -1,0 +1,28 @@
+name: Build HomeEar
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-26
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build unsigned development app
+        run: xcodebuild -project HomeEar.xcodeproj -scheme HomeEar -configuration Release -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build | tee build.log | tail -100
+      - name: Package development artifact
+        run: |
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
+          test -n "$APP"
+          ditto -c -k --keepParent "$APP" HomeEar-dev.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HomeEar-development
+          path: HomeEar-dev.zip
+          retention-days: 1
