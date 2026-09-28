@@ -15,11 +15,14 @@ jobs:
           brew install xcodegen
           xcodegen generate
       - name: Build unsigned development app
-        run: xcodebuild -project HomeEar.xcodeproj -scheme HomeEar -configuration Release -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build | tee build.log | tail -100
+        run: |
+          set -o pipefail
+          xcodebuild -project HomeEar.xcodeproj -scheme HomeEar -configuration Release -arch arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)|^\*\*|The following build commands failed' | tail -100
       - name: Package development artifact
         run: |
           APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
           test -n "$APP"
+          test -x "$APP/Contents/MacOS/HomeEar"
           ditto -c -k --keepParent "$APP" HomeEar-dev.zip
       - uses: actions/upload-artifact@v4
         with:
