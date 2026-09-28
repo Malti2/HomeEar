@@ -1,0 +1,29 @@
+name: HomeEar
+options:
+  bundleIdPrefix: net.homeear
+  deploymentTarget:
+    macOS: '26.0'
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    MACOSX_DEPLOYMENT_TARGET: '26.0'
+    CODE_SIGNING_ALLOWED: NO
+targets:
+  HomeEar:
+    type: application
+    platform: macOS
+    sources:
+      - path: HomeEar
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.homeear.HomeEar
+        PRODUCT_NAME: HomeEar
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: HomeEar
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: HomeEar listens locally and sends only matched requests to your connected assistant.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: HomeEar transcribes speech locally with Apple Speech.
+        CODE_SIGN_ENTITLEMENTS: HomeEar/HomeEar.entitlements
+        CODE_SIGNING_ALLOWED: NO
+    scheme:
+      testTargets: []
