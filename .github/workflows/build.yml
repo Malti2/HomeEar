@@ -43,6 +43,21 @@ jobs:
           "$APP/Contents/Resources/Runtime/node" "$APP/Contents/Resources/Runtime/poke.cjs" --version
           find "$APP/Contents/Resources/Runtime" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null || ls -la "$APP/Contents/Resources/Runtime"
           ditto -c -k --keepParent "$APP" HomeEar-dev.zip
+      - name: Capture development UI on runner
+        continue-on-error: true
+        run: |
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
+          open "$APP"
+          sleep 5
+          osascript -e 'tell application "HomeEar" to activate' || true
+          screencapture -x HomeEar-runner-desktop.png
+          sips -g pixelWidth -g pixelHeight HomeEar-runner-desktop.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HomeEar-runner-screenshot
+          path: HomeEar-runner-desktop.png
+          if-no-files-found: ignore
+          retention-days: 1
       - uses: actions/upload-artifact@v4
         with:
           name: HomeEar-development
