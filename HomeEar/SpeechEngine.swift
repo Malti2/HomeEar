@@ -40,7 +40,7 @@ import Speech
         } catch { throw Failure.model }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         self.analyzer = analyzer
-        let target = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber])
+        guard let target = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else { throw Failure.format }
         let (stream, builder) = AsyncStream<AnalyzerInput>.makeStream()
         continuation = builder
         resultsTask = Task { [weak self] in
