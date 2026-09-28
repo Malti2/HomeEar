@@ -22,11 +22,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.homeear.HomeEar
         PRODUCT_NAME: HomeEar
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: HomeEar
-        INFOPLIST_KEY_LSUIElement: YES
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: HomeEar listens locally and sends only matched requests to your connected assistant.
-        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: HomeEar transcribes speech locally with Apple Speech.
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: HomeEar/Info.plist
         CODE_SIGN_ENTITLEMENTS: HomeEar/HomeEar.entitlements
         CODE_SIGNING_ALLOWED: NO
     scheme:
