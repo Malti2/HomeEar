@@ -25,11 +25,19 @@ import Speech
 
     init(state: AppState) { self.state = state }
 
+    private nonisolated static func requestSpeechAuthorization() async -> Bool {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            SFSpeechRecognizer.requestAuthorization { status in
+                // TCC invokes this completion on a background queue. Resume only
+                // the Sendable continuation here; do not touch MainActor state.
+                continuation.resume(returning: status == .authorized)
+            }
+        }
+    }
+
     func start(language: String) async throws {
         guard await AVCaptureDevice.requestAccess(for: .audio) else { throw Failure.microphone }
-        let authorized = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
-        }
+        let authorized = await Self.requestSpeechAuthorization()
         guard authorized else { throw Failure.recognition }
         guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: language)) else { throw Failure.locale }
         let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults], attributeOptions: [])
