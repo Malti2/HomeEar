@@ -68,19 +68,10 @@ import Speech
             guard source.channelCount > 0, source.sampleRate > 0,
                   target.channelCount > 0, target.sampleRate > 0 else { throw Failure.inputUnavailable }
             guard let converter = AVAudioConverter(from: source, to: target) else { throw Failure.format }
-            input.installTap(onBus: 0, bufferSize: 4096, format: source) { buffer, _ in
-                let ratio = target.sampleRate / source.sampleRate
-                let capacity = AVAudioFrameCount(ceil(Double(buffer.frameLength) * ratio)) + 64
-                guard let output = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
-                let once = OneShotBuffer(buffer)
-                var error: NSError?
-                let status = converter.convert(to: output, error: &error) { _, status in
-                    guard let next = once.take() else { status.pointee = .noDataNow; return nil }
-                    status.pointee = .haveData
-                    return next
-                }
-                if status != .error, output.frameLength > 0 { builder.yield(AnalyzerInput(buffer: output)) }
-            }
+            // The callback must be formed outside AppleSpeechEngine's MainActor
+            // isolation: CoreAudio invokes it on its realtime service queue.
+            let sink = AudioTapSink(converter: converter, target: target, continuation: builder)
+            sink.install(on: input, format: source)
             tapInstalled = true
             engine.prepare()
             try engine.start()
@@ -113,5 +104,41 @@ private final class OneShotBuffer: @unchecked Sendable {
         let next = value
         value = nil
         return next
+    }
+}
+
+// This object has no actor isolation. CoreAudio owns its tap invocation thread;
+// it never reads or writes AppleSpeechEngine or AppState. Its converter is used
+// only by the installed tap, and the stream continuation is thread-safe.
+private final class AudioTapSink: @unchecked Sendable {
+    private let converter: AVAudioConverter
+    private let target: AVAudioFormat
+    private let continuation: AsyncStream<AnalyzerInput>.Continuation
+
+    init(converter: AVAudioConverter, target: AVAudioFormat,
+         continuation: AsyncStream<AnalyzerInput>.Continuation) {
+        self.converter = converter
+        self.target = target
+        self.continuation = continuation
+    }
+
+    func install(on input: AVAudioInputNode, format source: AVAudioFormat) {
+        input.installTap(onBus: 0, bufferSize: 4096, format: source) { [self] buffer, _ in
+            consume(buffer, sourceRate: source.sampleRate)
+        }
+    }
+
+    private func consume(_ buffer: AVAudioPCMBuffer, sourceRate: Double) {
+        let ratio = target.sampleRate / sourceRate
+        let capacity = AVAudioFrameCount(ceil(Double(buffer.frameLength) * ratio)) + 64
+        guard let output = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
+        let once = OneShotBuffer(buffer)
+        var error: NSError?
+        let status = converter.convert(to: output, error: &error) { _, status in
+            guard let next = once.take() else { status.pointee = .noDataNow; return nil }
+            status.pointee = .haveData
+            return next
+        }
+        if status != .error, output.frameLength > 0 { continuation.yield(AnalyzerInput(buffer: output)) }
     }
 }
