@@ -4,7 +4,7 @@ import Speech
 
 @MainActor final class AppleSpeechEngine {
     enum Failure: LocalizedError {
-        case microphone, recognition, locale, model, format
+        case microphone, recognition, locale, model, format, inputUnavailable
         var errorDescription: String? {
             switch self {
             case .microphone: "Microphone access denied. Enable HomeEar in System Settings > Privacy & Security > Microphone."
@@ -12,6 +12,7 @@ import Speech
             case .locale: "This speech language is not available on this Mac."
             case .model: "The speech model could not be installed. Check your connection and retry."
             case .format: "The microphone format could not be prepared."
+            case .inputUnavailable: "No usable microphone input is available. Check your audio input device in System Settings and try again."
             }
         }
     }
@@ -19,7 +20,7 @@ import Speech
     private let engine = AVAudioEngine()
     private var analyzer: SpeechAnalyzer?
     private var resultsTask: Task<Void, Never>?
-    private var feedTask: Task<Void, Never>?
+    private var tapInstalled = false
     private var continuation: AsyncStream<AnalyzerInput>.Continuation?
 
     init(state: AppState) { self.state = state }
@@ -56,6 +57,8 @@ import Speech
             try await analyzer.start(inputSequence: stream)
             let input = engine.inputNode
             let source = input.outputFormat(forBus: 0)
+            guard source.channelCount > 0, source.sampleRate > 0,
+                  target.channelCount > 0, target.sampleRate > 0 else { throw Failure.inputUnavailable }
             guard let converter = AVAudioConverter(from: source, to: target) else { throw Failure.format }
             input.installTap(onBus: 0, bufferSize: 4096, format: source) { buffer, _ in
                 let ratio = target.sampleRate / source.sampleRate
@@ -70,6 +73,7 @@ import Speech
                 }
                 if status != .error, output.frameLength > 0 { builder.yield(AnalyzerInput(buffer: output)) }
             }
+            tapInstalled = true
             engine.prepare()
             try engine.start()
         } catch {
@@ -80,7 +84,7 @@ import Speech
 
     func stop() {
         if engine.isRunning { engine.stop() }
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled { engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
         continuation?.finish()
         continuation = nil
         let ending = analyzer
