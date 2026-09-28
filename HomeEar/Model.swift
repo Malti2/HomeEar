@@ -69,7 +69,7 @@ enum KeyStore {
 
     init() {
         Task { @MainActor in
-            do { try mcp.start() }
+            do { try mcp.start(); if completedSetup { tunnel.start() } }
             catch { ttsState = "Local tool unavailable: \(error.localizedDescription)" }
         }
     }
