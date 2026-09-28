@@ -1,0 +1,94 @@
+import Foundation
+import Network
+
+// Loopback-only MCP endpoint. The Poke CLI must expose it through its authenticated tunnel.
+@MainActor final class MCPServer {
+    private var listener: NWListener?
+    private weak var state: AppState?
+    init(state: AppState) { self.state = state }
+    func start() throws {
+        let parameters = NWParameters.tcp
+        parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: 3000)
+        let listener = try NWListener(using: parameters)
+        self.listener = listener
+        listener.newConnectionHandler = { [weak self] connection in
+            Task { @MainActor in self?.handle(connection) }
+        }
+        listener.stateUpdateHandler = { [weak self] status in
+            Task { @MainActor in
+                switch status {
+                case .ready: self?.state?.ttsState = "Local tool ready; tunnel required"
+                case .failed(let error): self?.state?.ttsState = "Tool error: \(error.localizedDescription)"
+                default: break
+                }
+            }
+        }
+        listener.start(queue: .global(qos: .userInitiated))
+    }
+    func stop() { listener?.cancel(); listener = nil }
+
+    private func handle(_ connection: NWConnection) {
+        connection.start(queue: .global(qos: .userInitiated))
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, _ in
+            Task { @MainActor in
+                guard let self, let data else { connection.cancel(); return }
+                self.respond(to: data, on: connection)
+            }
+        }
+    }
+    private func respond(to data: Data, on connection: NWConnection) {
+        guard let split = data.range(of: Data("\r\n\r\n".utf8)),
+              let header = String(data: data[..<split.lowerBound], encoding: .utf8),
+              header.hasPrefix("POST /mcp "),
+              let lengthLine = header.split(separator: "\r\n").first(where: { $0.lowercased().hasPrefix("content-length:") }),
+              let length = Int(lengthLine.split(separator: ":", maxSplits: 1).last?.trimmingCharacters(in: .whitespaces) ?? ""),
+              length >= 0, length <= 32768 else {
+            send(["error": "Unsupported request"], code: 400, on: connection); return
+        }
+        let available = data.distance(from: split.upperBound, to: data.endIndex)
+        if available < length {
+            connection.receive(minimumIncompleteLength: length - available, maximumLength: 32768) { [weak self] rest, _, _, _ in
+                Task { @MainActor in
+                    guard let self, let rest else { connection.cancel(); return }
+                    self.process(Data(data[split.upperBound...]) + rest, on: connection)
+                }
+            }
+        } else { process(Data(data[split.upperBound...].prefix(length)), on: connection) }
+    }
+    private func process(_ body: Data, on connection: NWConnection) {
+        guard let request = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              let method = request["method"] as? String else {
+            send(["error": "Invalid JSON-RPC"], code: 400, on: connection); return
+        }
+        let id = request["id"] ?? NSNull()
+        let result: [String: Any]
+        switch method {
+        case "initialize":
+            result = ["protocolVersion": "2025-03-26", "capabilities": ["tools": [:]], "serverInfo": ["name": "HomeEar", "version": "0.1.0"]]
+        case "tools/list":
+            result = ["tools": [["name": "speak", "description": "Speak a short response through the Mac's local voice", "inputSchema": ["type": "object", "properties": ["text": ["type": "string"]], "required": ["text"]]]]]
+        case "tools/call":
+            let parameters = request["params"] as? [String: Any]
+            let args = parameters?["arguments"] as? [String: Any]
+            if parameters?["name"] as? String == "speak", let text = args?["text"] as? String, !text.isEmpty, text.count <= 1000 {
+                state?.tts.speak(text)
+                result = ["content": [["type": "text", "text": "Speaking on this Mac."]]]
+            } else {
+                send(["jsonrpc": "2.0", "id": id, "error": ["code": -32602, "message": "Invalid speech request"]], on: connection); return
+            }
+        case "notifications/initialized":
+            sendNoContent(on: connection); return
+        default:
+            send(["jsonrpc": "2.0", "id": id, "error": ["code": -32601, "message": "Method not found"]], on: connection); return
+        }
+        send(["jsonrpc": "2.0", "id": id, "result": result], on: connection)
+    }
+    private func send(_ object: [String: Any], code: Int = 200, on connection: NWConnection) {
+        guard let body = try? JSONSerialization.data(withJSONObject: object) else { connection.cancel(); return }
+        let header = "HTTP/1.1 \(code) \(code == 200 ? "OK" : "Bad Request")\r\nContent-Type: application/json\r\nContent-Length: \(body.count)\r\nConnection: close\r\n\r\n"
+        connection.send(content: Data(header.utf8) + body, completion: .contentProcessed { _ in connection.cancel() })
+    }
+    private func sendNoContent(on connection: NWConnection) {
+        connection.send(content: Data("HTTP/1.1 202 Accepted\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".utf8), completion: .contentProcessed { _ in connection.cancel() })
+    }
+}
