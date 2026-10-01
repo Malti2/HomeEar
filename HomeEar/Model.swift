@@ -59,7 +59,16 @@ enum KeyStore {
     @Published var language = UserDefaults.standard.string(forKey: "language") ?? "de-DE"
     @Published var startAtLogin = false
     @Published var voiceID = UserDefaults.standard.string(forKey: "voiceID") ?? ""
-    @Published var strictFilter = true
+    @Published var strictFilter = UserDefaults.standard.object(forKey: "strictFilter") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(strictFilter, forKey: "strictFilter") }
+    }
+    @Published var wakeWordEnabled = UserDefaults.standard.object(forKey: "wakeWordEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(wakeWordEnabled, forKey: "wakeWordEnabled") }
+    }
+    @Published var proactiveEnabled = UserDefaults.standard.object(forKey: "proactiveEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(proactiveEnabled, forKey: "proactiveEnabled") }
+    }
+    let router = UtteranceRouter()
     let backend: any AgentBackend = PokeBackend()
     lazy var speech = AppleSpeechEngine(state: self)
     lazy var tts = VoiceOutput(state: self)
@@ -68,6 +77,12 @@ enum KeyStore {
     let updates = UpdateChecker()
 
     init() {
+        router.onDeliver = { [weak self] text, source in self?.forwardToPoke(text: text, source: source) }
+        router.onDecision = { [weak self] decision in self?.latestDecision = decision }
+        router.onCommandModeChanged = { [weak self] active in
+            guard let self else { return }
+            self.speechState = active ? "Listening for command…" : (self.microphoneOn ? "Listening on device" : "Paused")
+        }
         Task { @MainActor in
             do { try mcp.start(); if completedSetup { tunnel.start() } }
             catch { ttsState = "Local tool unavailable: \(error.localizedDescription)" }
@@ -88,14 +103,20 @@ enum KeyStore {
     }
     func stop() {
         speech.stop()
+        router.reset()
         microphoneOn = false
         speechState = "Paused"
     }
-    func receive(_ text: String) {
+    func receive(_ text: String, isFinal: Bool) {
         latestText = text
-        let result = RequestFilter.check(text, strict: strictFilter)
-        latestDecision = result.reason
-        guard result.allowed, completedSetup else { return }
+        router.config.wakeWordEnabled = wakeWordEnabled
+        router.config.proactiveEnabled = proactiveEnabled
+        router.config.strictFilter = strictFilter
+        router.receive(text, isFinal: isFinal)
+    }
+    private func forwardToPoke(text: String, source: FilterSource) {
+        latestDecision = "\(source.rawValue) → forwarded to Poke"
+        guard completedSetup else { return }
         Task {
             do {
                 try await backend.send(text)
