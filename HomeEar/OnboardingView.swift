@@ -57,8 +57,10 @@ struct OnboardingView: View {
                 default:
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Ready to listen").font(.title.bold())
-                        Text("HomeEar forwards likely requests automatically when listening. You can pause the microphone from the menu bar.")
+                        Text("Say “Hey Poke” followed by a request — or just speak a likely command and HomeEar forwards it automatically. You can pause the microphone from the menu bar.")
                         Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))
+                        Toggle("“Hey Poke” wake word", isOn: $state.wakeWordEnabled)
+                        Toggle("Proactive request filter", isOn: $state.proactiveEnabled)
                         Toggle("Strict request filter", isOn: $state.strictFilter)
                         Text("The Poke runtime is included. Sign in once through your browser; HomeEar starts the voice tunnel and reconnects it automatically. Outbound requests still work if the tunnel is offline.").font(.caption).foregroundStyle(.secondary)
                         Button(state.tunnel.hasCredentials ? "Connect voice tunnel" : "Sign in to Poke") { state.tunnel.start() }
