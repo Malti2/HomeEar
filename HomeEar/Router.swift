@@ -67,10 +67,13 @@ import Foundation
         // 3. Proactive path: finals only (partials are too unstable to judge).
         guard isFinal else { return }
         guard config.proactiveEnabled else { return }
-        switch RequestFilter.checkProactive(trimmed, strict: config.strictFilter) {
+        // A leftover "hey poke" (wake word disabled, said out of habit) is
+        // stripped so Poke gets the command, not the trigger phrase.
+        let command = WakeWordDetector.stripLeadingWakeWord(from: trimmed) ?? trimmed
+        switch RequestFilter.checkProactive(command, strict: config.strictFilter) {
         case .accept(let source, let reason):
             onDecision?("\(source.rawValue): \(reason)")
-            deliver(trimmed, source: source)
+            deliver(command, source: source)
         case .reject(let reason):
             onDecision?(reason)
         }
