@@ -28,6 +28,12 @@ jobs:
           cp LICENSE-THIRD-PARTY.md HomeEar/Runtime/LICENSE-THIRD-PARTY.md
       - name: Generate project
         run: xcodegen generate
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild -project HomeEar.xcodeproj -scheme HomeEarTests -destination 'platform=macOS' -arch arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tee test.log | tail -30
+          grep -E 'Executed .* tests' test.log | tail -5
+          grep -q 'BUILD SUCCEEDED' test.log
       - name: Build unsigned development app
         run: |
           set -o pipefail
@@ -68,4 +74,4 @@ jobs:
         with:
           name: HomeEar-development
           path: HomeEar-dev.zip
-          retention-days: 1
+          retention-day
