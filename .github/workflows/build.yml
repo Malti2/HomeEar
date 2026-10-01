@@ -74,4 +74,4 @@ jobs:
         with:
           name: HomeEar-development
           path: HomeEar-dev.zip
-          retention-day
+          retention-days: 1
