@@ -4,7 +4,7 @@
 
 **A private voice gateway for your smart home on macOS.**
 
-Keep HomeEar running in the menu bar throughout the day, if you choose. It continuously listens for likely commands in German or English, filters speech on your Mac, and passes matching requests to your Poke agent. If you've connected Philips Hue, Home Assistant, or another smart-home service to Poke, your agent can use those connections to help with your home.
+Keep HomeEar running in the menu bar throughout the day, if you choose. Say **“Hey Poke”** followed by a request, or just speak a likely command in German or English — HomeEar filters speech on your Mac and passes matching requests to your Poke agent. If you've connected Philips Hue, Home Assistant, or another smart-home service to Poke, your agent can use those connections to help with your home.
 
 *Native menu bar UI · local speech recognition · Poke voice replies*
 
@@ -21,13 +21,14 @@ HomeEar does **not** control Hue or Home Assistant directly, and it doesn't crea
 ## How it works
 
 ```text
-Mac microphone → Apple's on-device SpeechTranscriber → local request filter
-             → Poke inbound API → your Poke agent → your connected home services
+Mac microphone → Apple's on-device SpeechTranscriber → UtteranceRouter
+    ├─ "Hey Poke" wake word (fuzzy, on partials+finals) → command → Poke inbound API
+    └─ proactive filter (scored finals, no wake word needed) → Poke inbound API
                                         ↘ Poke tunnel → HomeEar voice tool → Mac speaker
 ```
 
 - Recognition defaults to `de-DE`. English (`en-US`) is available in settings. The Mac must support the chosen on-device model and may need to download it first.
-- The request filter rejects short or non-command speech, but it is heuristic, not a privacy guarantee. Background speech could be sent by mistake. Pause the microphone from the menu bar whenever you need privacy.
+- Two input paths: the **“Hey Poke” wake word** is detected fuzzily in the live transcript (tolerating misrecognitions like “hey poak”), so an explicit invocation is understood reliably; a lone “Hey Poke” listens for your command for a few seconds. The **proactive filter** scores utterances without a wake word (command verbs, smart-home entities, polite framings) and forwards likely requests automatically. Both paths share a duplicate-suppression window so repeats are sent only once. The filter is heuristic, not a privacy guarantee — background speech could be sent by mistake. Pause the microphone from the menu bar whenever you need privacy.
 - Audio is not uploaded or saved by HomeEar. Qualifying **text** is sent to Poke once setup is complete and the microphone is active. HomeEar doesn't keep a transcript on disk.
 - The Poke V2 API key lives in macOS Keychain. Outbound requests and the inbound voice tunnel have separate status indicators.
 - The app includes a pinned Node.js and Poke CLI runtime for its local tunnel. The UI, audio pipeline, filter, Keychain access, and speech playback are native Swift. Sign in to Poke once in the browser through HomeEar's onboarding; the app then manages the tunnel and retries interrupted connections. This needs on-device validation before release.
