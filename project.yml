@@ -28,3 +28,13 @@ targets:
         CODE_SIGNING_ALLOWED: NO
     scheme:
       testTargets: []
+  HomeEarTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: HomeEarTests
+    dependencies:
+      - target: HomeEar
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.homeear.HomeEarTests
