@@ -55,9 +55,10 @@ import Speech
         resultsTask = Task { [weak self] in
             do {
                 for try await result in transcriber.results {
-                    guard result.isFinal else { continue }
                     let text = String(result.text.characters).trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !text.isEmpty { self?.state?.receive(text) }
+                    // Partials arm the wake-word detector for instant reaction;
+                    // only finals are judged by the proactive filter or delivered.
+                    if !text.isEmpty { self?.state?.receive(text, isFinal: result.isFinal) }
                 }
             } catch { self?.state?.speechState = "Transcription stopped: \(error.localizedDescription)" }
         }
