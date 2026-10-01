@@ -31,7 +31,7 @@ jobs:
       - name: Run unit tests
         run: |
           set -o pipefail
-          xcodebuild -project HomeEar.xcodeproj -scheme HomeEarTests -destination 'platform=macOS' -arch arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tee test.log | tail -30
+          xcodebuild -project HomeEar.xcodeproj -scheme HomeEarTests -destination 'platform=macOS' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tee test.log | tail -30
           grep -E 'Executed .* tests' test.log | tail -5
           grep -q 'BUILD SUCCEEDED' test.log
       - name: Build unsigned development app
