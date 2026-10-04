@@ -51,24 +51,38 @@ jobs:
           "$APP/Contents/Resources/Runtime/node" "$APP/Contents/Resources/Runtime/poke.cjs" --version
           find "$APP/Contents/Resources/Runtime" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null || ls -la "$APP/Contents/Resources/Runtime"
           ditto -c -k --keepParent "$APP" HomeEar-dev.zip
-      - name: Capture development UI on runner
-        continue-on-error: true
+      - name: Capture development windows on runner
         run: |
           APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
-          open "$APP"
-          sleep 5
-          osascript -e 'tell application "HomeEar" to activate' || true
-          screencapture -x HomeEar-runner-desktop.png
-          sips -g pixelWidth -g pixelHeight HomeEar-runner-desktop.png
-          echo SCREENSHOT_BASE64_BEGIN
-          base64 < HomeEar-runner-desktop.png | tr -d '\n'
-          echo
-          echo SCREENSHOT_BASE64_END
+          mkdir -p ui-capture
+          "$APP/Contents/MacOS/HomeEar" --capture-ui "$PWD/ui-capture" > ui-capture.log 2>&1 &
+          PID=$!
+          for ATTEMPT in $(seq 1 45); do
+            kill -0 "$PID" 2>/dev/null || break
+            sleep 1
+          done
+          if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID"
+            echo 'UI capture timed out'
+            cat ui-capture.log
+            exit 1
+          fi
+          wait "$PID"
+          cat ui-capture.log
+          grep -q HOME_EAR_UI_CAPTURE_SUCCEEDED ui-capture.log
+          for NAME in panel settings onboarding; do
+            test -s "ui-capture/HomeEar-$NAME.png"
+            sips -g pixelWidth -g pixelHeight "ui-capture/HomeEar-$NAME.png"
+            echo "SCREENSHOT_${NAME}_BASE64_BEGIN"
+            base64 < "ui-capture/HomeEar-$NAME.png" | tr -d '\n'
+            echo
+            echo "SCREENSHOT_${NAME}_BASE64_END"
+          done
       - uses: actions/upload-artifact@v4
         with:
-          name: HomeEar-runner-screenshot
-          path: HomeEar-runner-desktop.png
-          if-no-files-found: ignore
+          name: HomeEar-window-screenshots
+          path: ui-capture/*.png
+          if-no-files-found: error
           retention-days: 1
       - uses: actions/upload-artifact@v4
         with:
