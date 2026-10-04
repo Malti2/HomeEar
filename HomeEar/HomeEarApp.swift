@@ -72,9 +72,9 @@ struct PanelView: View {
                 }
                 Divider()
                 HStack(alignment: .top) {
-                    Text("Poke").foregroundStyle(.secondary)
+                    Text(state.selectedBackend == "poke" ? "Poke" : "Home Assistant").foregroundStyle(.secondary)
                     Spacer()
-                    Text(state.apiState).multilineTextAlignment(.trailing).lineLimit(2)
+                    Text(state.selectedBackend == "poke" ? state.apiState : state.haState).multilineTextAlignment(.trailing).lineLimit(2)
                 }
             }.font(.caption)
             if !state.microphoneOn && state.speechState != "Not started" && state.speechState != "Paused" {
@@ -125,8 +125,35 @@ struct HomeEarSettingsView: View {
     @ObservedObject var state: AppState
     @State private var key = ""
     @State private var revealKey = false
+    @State private var haToken = ""
     var body: some View {
         Form {
+            Section("Request destination") {
+                Picker("Send requests to", selection: $state.selectedBackend) {
+                    Text("Poke").tag("poke")
+                    Text("Home Assistant").tag("home_assistant")
+                }.pickerStyle(.segmented)
+                Text("Only the selected backend receives your requests. No automatic fallback.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Home Assistant") {
+                TextField("Server URL (https://...)", text: $state.haURL)
+                SecureField("Long-lived access token", text: $haToken)
+                HStack {
+                    Button("Save token") {
+                        if state.saveHAToken(haToken) { haToken = "" }
+                    }.disabled(haToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button(state.haTesting ? "Checking..." : "Test connection") { state.testHomeAssistant() }
+                        .disabled(state.haTesting)
+                }
+                Text("Token stays in Keychain. Use HTTPS or a private VPN address. Assist uses the selected speech language; no paid AI calls.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text(state.haState).font(.caption).foregroundStyle(.secondary)
+                if !state.haResponse.isEmpty {
+                    Text(state.haResponse).font(.callout)
+                    Button("Read reply (pauses microphone)") { state.speakHAResponse() }
+                }
+            }
             Section("Speech recognition") {
                 Picker("Language", selection: Binding(get: { state.language }, set: { state.saveLanguage($0) })) {
                     Text("German (Germany)").tag("de-DE")
@@ -135,7 +162,7 @@ struct HomeEarSettingsView: View {
                 Toggle("Hey Poke wake word", isOn: $state.wakeWordEnabled)
                 Toggle("Proactive requests", isOn: $state.proactiveEnabled)
                 Toggle("Strict request filter", isOn: $state.strictFilter)
-                Text("Apple recognition runs on this Mac in fast live mode. Only finalized requests are sent to Poke.")
+                Text("Apple recognition runs on this Mac in fast live mode. Only finalized requests are sent to your selected backend.")
                     .font(.caption).foregroundStyle(.secondary)
                 LabeledContent("Status", value: state.speechState)
                 Button(state.microphoneOn ? "Pause microphone" : "Start microphone") {
