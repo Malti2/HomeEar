@@ -23,7 +23,8 @@ struct OnboardingView: View {
                 Text("\(step + 1) of 4").font(.caption).foregroundStyle(.secondary)
             }
             ProgressView(value: Double(step + 1), total: 4).tint(.teal)
-            Group {
+            ScrollView {
+                Group {
                 switch step {
                 case 0:
                     VStack(alignment: .leading, spacing: 18) {
@@ -78,7 +79,7 @@ struct OnboardingView: View {
                 default:
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Ready to listen").font(.title.bold())
-                        Text("Say “Hey Poke” followed by a request — or just speak a likely command and HomeEar forwards it automatically. You can pause the microphone from the menu bar.")
+                        Text("Say \"Hey Poke\" and a request, or speak a likely command. Pause the microphone from the menu bar.").fixedSize(horizontal: false, vertical: true)
                         Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))
                         Toggle("“Hey Poke” wake word", isOn: $state.wakeWordEnabled)
                         Toggle("Proactive request filter", isOn: $state.proactiveEnabled)
@@ -96,6 +97,7 @@ struct OnboardingView: View {
                         }
                     }
                 }
+                }.frame(maxWidth: .infinity, alignment: .topLeading)
             }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             HStack {
                 if step > 0 { Button("Back") { step -= 1 } }
