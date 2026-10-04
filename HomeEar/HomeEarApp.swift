@@ -3,10 +3,20 @@ import AppKit
 
 @main struct HomeEarApp: App {
     @StateObject private var state = AppState()
+    init() {
+        NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
+        if let index = CommandLine.arguments.firstIndex(of: "--capture-ui"),
+           CommandLine.arguments.indices.contains(index + 1) {
+            let directory = CommandLine.arguments[index + 1]
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                DevelopmentUICapture.run(directory: directory)
+            }
+        }
+    }
     var body: some Scene {
         MenuBarExtra("HomeEar", systemImage: state.microphoneOn ? "waveform" : "waveform.slash") {
             PanelView(state: state)
-                .frame(width: 350)
+                .frame(width: 320)
         }
         .menuBarExtraStyle(.window)
         Window("HomeEar Setup", id: "setup") {
@@ -36,49 +46,65 @@ struct PanelView: View {
     @ObservedObject var state: AppState
     @Environment(\.openWindow) private var openWindow
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "waveform.circle.fill").font(.title).foregroundStyle(.teal)
-                VStack(alignment: .leading) {
-                    Text("HomeEar").font(.headline)
-                    Text(state.microphoneOn ? "Listening locally" : "Microphone paused").font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Circle().fill(state.microphoneOn ? .green : .gray).frame(width: 9, height: 9)
+        VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("HomeEar").font(.title3.weight(.semibold))
+                Label(state.microphoneOn ? "Listening on this Mac" : "Microphone paused",
+                      systemImage: state.microphoneOn ? "circle.fill" : "pause.circle")
+                    .font(.caption)
+                    .foregroundStyle(state.microphoneOn ? Color.green : Color.secondary)
             }
-            Divider()
             VStack(alignment: .leading, spacing: 8) {
-                StatusRow(icon: "waveform", label: "Speech", value: state.speechState)
-                StatusRow(icon: "paperplane", label: "Poke API", value: state.apiState)
-                StatusRow(icon: "speaker.wave.2", label: "Voice tool", value: state.ttsState)
-                StatusRow(icon: "network", label: "Poke tunnel", value: state.tunnel.state)
+                Text("LAST HEARD").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                Text(state.latestText).font(.subheadline).lineLimit(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !state.latestDecision.isEmpty {
+                    Text(state.latestDecision).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+                }
             }
-            VStack(alignment: .leading, spacing: 7) {
-                Text("RECENT ACTIVITY").font(.caption2.weight(.bold)).foregroundStyle(.secondary)
-                Text(state.latestText).font(.subheadline).lineLimit(3)
-                if !state.latestDecision.isEmpty { Text(state.latestDecision).font(.caption).foregroundStyle(.secondary) }
-            }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+            .padding(14)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            VStack(spacing: 12) {
+                HStack {
+                    Text("Speech").foregroundStyle(.secondary)
+                    Spacer()
+                    Text("Apple · \(state.language == "de-DE" ? "German" : "English")")
+                }
+                Divider()
+                HStack(alignment: .top) {
+                    Text("Poke").foregroundStyle(.secondary)
+                    Spacer()
+                    Text(state.apiState).multilineTextAlignment(.trailing).lineLimit(2)
+                }
+            }.font(.caption)
+            if !state.microphoneOn && state.speechState != "Not started" && state.speechState != "Paused" {
+                Text(state.speechState).font(.caption).foregroundStyle(.secondary)
+            }
             HStack {
-                Button(state.microphoneOn ? "Pause microphone" : "Start microphone") {
+                Button(state.microphoneOn ? "Pause" : "Start listening") {
                     state.microphoneOn ? state.stop() : state.start()
                 }.buttonStyle(.borderedProminent)
                 Spacer()
-                Button("Settings") {
-                    openWindow(id: "settings")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        NSApp.activate(ignoringOtherApps: true)
-                        NSApp.windows.first(where: { $0.title == "HomeEar Settings" })?.makeKeyAndOrderFront(nil)
-                    }
-                }
+                Button("Settings") { presentSettings() }
             }
             HStack {
-                Button("Check updates") { state.updates.check() }
-                if state.updates.releaseURL != nil { Button("View release") { state.updates.openRelease() } }
+                if !state.completedSetup {
+                    Button("Finish setup") { openWindow(id: "setup") }
+                }
+                Spacer()
+                Button("Quit") { NSApplication.shared.terminate(nil) }
+                    .foregroundStyle(.secondary)
             }.font(.caption)
-            Text(state.updates.status).font(.caption2).foregroundStyle(.secondary)
-            Divider()
-            Button("Quit HomeEar") { NSApplication.shared.terminate(nil) }.font(.caption)
-        }.padding(18)
+        }
+        .padding(20)
+        .preferredColorScheme(.dark)
+    }
+    private func presentSettings() {
+        openWindow(id: "settings")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first(where: { $0.title == "HomeEar Settings" })?.makeKeyAndOrderFront(nil)
+        }
     }
 }
 
@@ -148,5 +174,50 @@ struct HomeEarSettingsView: View {
         }
         .formStyle(.grouped)
         .padding(12)
+    }
+}
+
+
+/// Captures the production SwiftUI views in real AppKit windows on the CI Mac.
+/// Does not start the microphone, send requests, or populate sample activity.
+@MainActor private enum DevelopmentUICapture {
+    private static var windows: [NSWindow] = []
+    static func run(directory: String) {
+        let state = AppState()
+        Task { @MainActor in
+            do {
+                try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+                let views: [(String, AnyView, NSSize)] = [
+                    ("panel", AnyView(PanelView(state: state).preferredColorScheme(.dark)), NSSize(width: 320, height: 410)),
+                    ("settings", AnyView(HomeEarSettingsView(state: state).preferredColorScheme(.dark)), NSSize(width: 580, height: 750)),
+                    ("onboarding", AnyView(OnboardingView(state: state).preferredColorScheme(.dark)), NSSize(width: 560, height: 470))
+                ]
+                for (name, view, size) in views {
+                    let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
+                                          styleMask: [.titled, .closable], backing: .buffered, defer: false)
+                    window.title = "HomeEar " + name.capitalized
+                    window.appearance = NSAppearance(named: .darkAqua)
+                    window.contentView = NSHostingView(rootView: view)
+                    windows.append(window)
+                    window.center()
+                    window.makeKeyAndOrderFront(nil)
+                    NSApp.activate(ignoringOtherApps: true)
+                    try await Task.sleep(nanoseconds: 1_500_000_000)
+                    let capture = Process()
+                    capture.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+                    capture.arguments = ["-x", "-o", "-l", String(window.windowNumber), directory + "/HomeEar-" + name + ".png"]
+                    try capture.run()
+                    capture.waitUntilExit()
+                    guard capture.terminationStatus == 0 else {
+                        throw NSError(domain: "HomeEarUICapture", code: Int(capture.terminationStatus))
+                    }
+                    window.orderOut(nil)
+                }
+                print("HOME_EAR_UI_CAPTURE_SUCCEEDED")
+            } catch {
+                print("HOME_EAR_UI_CAPTURE_FAILED: \(error)")
+            }
+            NSApp.terminate(nil)
+        }
     }
 }
