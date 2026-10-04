@@ -77,6 +77,10 @@ struct PanelView: View {
                     Text(state.selectedBackend == "poke" ? state.apiState : state.haState).multilineTextAlignment(.trailing).lineLimit(2)
                 }
             }.font(.caption)
+            if state.selectedBackend == "home_assistant" && !state.haResponse.isEmpty {
+                Text(state.haResponse).font(.callout).lineLimit(4)
+                Button("Read reply (pauses mic)") { state.speakHAResponse() }
+            }
             if !state.microphoneOn && state.speechState != "Not started" && state.speechState != "Paused" {
                 Text(state.speechState).font(.caption).foregroundStyle(.secondary)
             }
@@ -219,7 +223,15 @@ struct HomeEarSettingsView: View {
                     ("settings", AnyView(HomeEarSettingsView(state: state).preferredColorScheme(.dark)), NSSize(width: 580, height: 750)),
                     ("onboarding", AnyView(OnboardingView(state: state).preferredColorScheme(.dark)), NSSize(width: 560, height: 470))
                 ]
-                for (name, view, size) in views {
+                var captures = views
+                for step in 1...3 {
+                    captures.append(("setup-step-\(step + 1)", AnyView(OnboardingView(state: state, initialStep: step).preferredColorScheme(.dark)), NSSize(width: 560, height: 540)))
+                }
+                let haState = AppState()
+                haState.selectedBackend = "home_assistant"
+                captures.append(("panel-assist", AnyView(PanelView(state: haState).preferredColorScheme(.dark)), NSSize(width: 320, height: 410)))
+                captures.append(("setup-assist", AnyView(OnboardingView(state: haState, initialStep: 2).preferredColorScheme(.dark)), NSSize(width: 560, height: 540)))
+                for (name, view, size) in captures {
                     let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
                     window.title = "HomeEar " + name.capitalized
@@ -237,6 +249,23 @@ struct HomeEarSettingsView: View {
                     capture.waitUntilExit()
                     guard capture.terminationStatus == 0 else {
                         throw NSError(domain: "HomeEarUICapture", code: Int(capture.terminationStatus))
+                    }
+                    if name == "settings" {
+                        func scrollViews(_ view: NSView) -> [NSScrollView] {
+                            (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap { scrollViews($0) }
+                        }
+                        for scroll in scrollViews(window.contentView!) {
+                            if let document = scroll.documentView {
+                                document.scroll(NSPoint(x: 0, y: max(0, document.bounds.height - scroll.contentView.bounds.height)))
+                                scroll.reflectScrolledClipView(scroll.contentView)
+                            }
+                        }
+                        try await Task.sleep(nanoseconds: 500_000_000)
+                        let lower = Process()
+                        lower.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+                        lower.arguments = ["-x", "-o", "-l", String(window.windowNumber), directory + "/HomeEar-settings-lower.png"]
+                        try lower.run(); lower.waitUntilExit()
+                        guard lower.terminationStatus == 0 else { throw NSError(domain: "HomeEarUICapture", code: 1) }
                     }
                     window.orderOut(nil)
                 }
