@@ -40,7 +40,9 @@ import Speech
         let authorized = await Self.requestSpeechAuthorization()
         guard authorized else { throw Failure.recognition }
         guard let locale = await SpeechTranscriber.supportedLocale(equivalentTo: Locale(identifier: language)) else { throw Failure.locale }
-        let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults], attributeOptions: [])
+        // A smaller recognition context favors live command responsiveness.
+        // Final results still gate delivery; volatile text never controls Poke.
+        let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults, .fastResults], attributeOptions: [])
         do {
             if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
                 state?.speechState = "Installing speech model..."
@@ -63,6 +65,8 @@ import Speech
             } catch { self?.state?.speechState = "Transcription stopped: \(error.localizedDescription)" }
         }
         do {
+            state?.speechState = "Preparing speech model..."
+            try await analyzer.prepareToAnalyze(in: target)
             try await analyzer.start(inputSequence: stream)
             let input = engine.inputNode
             let source = input.outputFormat(forBus: 0)
@@ -124,7 +128,9 @@ private final class AudioTapSink: @unchecked Sendable {
     }
 
     func install(on input: AVAudioInputNode, format source: AVAudioFormat) {
-        input.installTap(onBus: 0, bufferSize: 4096, format: source) { [self] buffer, _ in
+        // Request smaller audio batches: about 21 ms at a 48 kHz input.
+        // CoreAudio may supply a different actual buffer size.
+        input.installTap(onBus: 0, bufferSize: 1024, format: source) { [self] buffer, _ in
             consume(buffer, sourceRate: source.sampleRate)
         }
     }
