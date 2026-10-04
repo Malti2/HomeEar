@@ -70,7 +70,7 @@ jobs:
           wait "$PID"
           cat ui-capture.log
           grep -q HOME_EAR_UI_CAPTURE_SUCCEEDED ui-capture.log
-          for NAME in panel settings onboarding; do
+          for NAME in panel settings settings-lower onboarding setup-step-2 setup-step-3 setup-step-4 panel-assist setup-assist; do
             test -s "ui-capture/HomeEar-$NAME.png"
             sips -g pixelWidth -g pixelHeight "ui-capture/HomeEar-$NAME.png"
             echo "SCREENSHOT_${NAME}_BASE64_BEGIN"
