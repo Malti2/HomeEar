@@ -301,8 +301,7 @@ struct UpdateSettingsView: View {
                 Button("Check for updates...") { updates.check() }.disabled(!updates.canCheckForUpdates)
                 Button("GitHub Releases") { updates.openRelease() }
             }
-            Text("Updates are downloaded from GitHub Releases, verified, then installed after confirmation. HomeEar relaunches to finish. Your settings and Keychain tokens stay on this Mac.")
-                .font(.caption).foregroundStyle(.secondary)
+
         }
     }
 }
