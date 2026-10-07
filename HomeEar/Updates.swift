@@ -107,7 +107,9 @@ enum ReleaseDiscovery {
         status = "A \(channel.rawValue) update is available; review before installing"
     }
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
-        if let error { status = "Update check failed: \(error.localizedDescription)" }
+        if let error, (error as NSError).code != 1001 {
+            status = "Update check failed: \(error.localizedDescription)"
+        }
         finish()
     }
     private func finish() { checking = false; canCheckForUpdates = true }
