@@ -26,12 +26,14 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.homeear.HomeEar
         PRODUCT_NAME: HomeEar
+        REMOVE_HEADERS_FROM_EMBEDDED_BUNDLES: NO
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: HomeEar/Info.plist
         CODE_SIGN_ENTITLEMENTS: HomeEar/HomeEar.entitlements
         CODE_SIGNING_ALLOWED: NO
     dependencies:
       - package: Sparkle
+        removeHeaders: false
     scheme:
       testTargets: []
   HomeEarTests:
