@@ -38,6 +38,19 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project HomeEar.xcodeproj -scheme HomeEar -configuration Release -arch arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build 2>&1 | tee build.log | grep -E 'error:|warning:|BUILD (SUCCEEDED|FAILED)|^\*\*|The following build commands failed' | tail -100
+      - name: Seal app bundle for integrity (ad-hoc, not Developer ID)
+        run: |
+          set -euo pipefail
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
+          test -n "$APP"
+          # Re-seal the embedded Node executable and the final bundle after all copies.
+          # Keep Sparkle's upstream helper signatures intact. No quarantine removal.
+          codesign --force --sign - --identifier net.homeear.runtime.node "$APP/Contents/Resources/Runtime/node"
+          codesign --verify --strict --verbose=2 "$APP/Contents/Resources/Runtime/node"
+          codesign --verify --deep --strict --verbose=2 "$APP/Contents/Frameworks/Sparkle.framework"
+          codesign --force --sign - --identifier net.homeear.HomeEar "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv --verbose=4 "$APP" 2>&1
       - name: Package development artifact
         run: |
           APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
@@ -50,7 +63,41 @@ jobs:
           "$APP/Contents/Resources/Runtime/node" --version
           "$APP/Contents/Resources/Runtime/node" "$APP/Contents/Resources/Runtime/poke.cjs" --version
           find "$APP/Contents/Resources/Runtime" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null || ls -la "$APP/Contents/Resources/Runtime"
-          ditto -c -k --keepParent "$APP" HomeEar-dev.zip
+          mkdir -p dist/dmg-root
+          ditto "$APP" dist/dmg-root/HomeEar.app
+          ln -s /Applications dist/dmg-root/Applications
+          hdiutil create -volname HomeEar -srcfolder dist/dmg-root -ov -format UDZO dist/HomeEar.dmg
+          hdiutil verify dist/HomeEar.dmg
+          ditto -c -k --sequesterRsrc --keepParent "$APP" dist/HomeEar.zip
+          mkdir -p dist/zip-check
+          ditto -x -k dist/HomeEar.zip dist/zip-check
+          codesign --verify --deep --strict --verbose=2 dist/zip-check/HomeEar.app
+          test -x dist/zip-check/HomeEar.app/Contents/Resources/Runtime/node
+          hdiutil attach -readonly -nobrowse -mountpoint "$PWD/dist/mounted-dmg" dist/HomeEar.dmg
+          codesign --verify --deep --strict --verbose=2 dist/mounted-dmg/HomeEar.app
+          test -L dist/mounted-dmg/Applications
+          hdiutil detach "$PWD/dist/mounted-dmg"
+          shasum -a 256 dist/HomeEar.zip dist/HomeEar.dmg > dist/SHA256SUMS.txt
+          # Developer ID is intentionally unavailable in this development build.
+          # Gatekeeper assessment is diagnostic, not suppressed or treated as notarization.
+          spctl --assess --type execute --verbose=4 "$APP" > dist/gatekeeper-assessment.txt 2>&1 || true
+          cat dist/gatekeeper-assessment.txt
+      - name: Prepare signed update feed (no release publication)
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$SPARKLE_PRIVATE_KEY"
+          TOOLS=$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*/artifacts/sparkle/Sparkle/bin/generate_appcast' -print -quit)
+          test -x "$TOOLS"
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/zip-check/HomeEar.app/Contents/Info.plist)
+          mkdir -p dist/updates
+          cp dist/HomeEar.zip "dist/updates/HomeEar-$VERSION.zip"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$TOOLS" --ed-key-file - --download-url-prefix "https://github.com/Malti2/HomeEar/releases/download/v$VERSION/" dist/updates
+          test -s dist/updates/appcast.xml
+          grep -q edSignature dist/updates/appcast.xml
+          grep -q sparkle:signature dist/updates/appcast.xml
+          # Never edit the feed after signing it.
       - name: Capture development windows on runner
         run: |
           APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
@@ -83,9 +130,15 @@ jobs:
           name: HomeEar-window-screenshots
           path: ui-capture/*.png
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 3
       - uses: actions/upload-artifact@v4
         with:
           name: HomeEar-development
-          path: HomeEar-dev.zip
-          retention-days: 1
+          path: |
+            dist/HomeEar.zip
+            dist/HomeEar.dmg
+            dist/SHA256SUMS.txt
+            dist/gatekeeper-assessment.txt
+            dist/updates/*.zip
+            dist/updates/appcast.xml
+          retention-days: 3
