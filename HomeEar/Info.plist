@@ -8,8 +8,8 @@
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.4</string>
-  <key>CFBundleVersion</key><string>5</string>
+  <key>CFBundleShortVersionString</key><string>0.1.5</string>
+  <key>CFBundleVersion</key><string>6</string>
   <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>LSUIElement</key><true/>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
@@ -17,7 +17,7 @@
   <key>NSHighResolutionCapable</key><true/>
   <key>NSMicrophoneUsageDescription</key><string>HomeEar transcribes microphone audio on this Mac and sends only matched text requests to your selected backend.</string>
   <key>NSSpeechRecognitionUsageDescription</key><string>HomeEar uses on-device speech recognition to understand your voice requests.</string>
-  <key>SUFeedURL</key><string>https://github.com/Malti2/HomeEar/releases/latest/download/appcast.xml</string>
+  <key>SUFeedURL</key><string>https://github.com/Malti2/HomeEar/releases/download/v0.1.4/appcast.xml</string>
   <key>SUPublicEDKey</key><string>UlrB4D5gSKb/4oRAJ6hdVJuWLpBeKuEurOriNh6OJvE=</string>
   <key>SUVerifyUpdateBeforeExtraction</key><true/>
   <key>SURequireSignedFeed</key><true/>
