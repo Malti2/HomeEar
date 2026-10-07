@@ -100,6 +100,11 @@ jobs:
           printf '%s' "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - --verify dist/updates/appcast.xml
           SIG=$(python3 -c 'import xml.etree.ElementTree as E; r=E.parse("dist/updates/appcast.xml"); print(r.find(".//enclosure").attrib["{http://www.andymatuschak.org/xml-namespaces/sparkle}edSignature"])')
           printf '%s' "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - --verify "dist/updates/HomeEar-$VERSION.zip" "$SIG"
+          # Verify the exact feed URL embedded in this app, not just a local file.
+          FEED=$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' dist/zip-check/HomeEar.app/Contents/Info.plist)
+          curl --fail --location --proto '=https' --proto-redir '=https' "$FEED" -o dist/updates/live-test-appcast.xml
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - --verify dist/updates/live-test-appcast.xml
+          rm dist/updates/live-test-appcast.xml
           # Never edit the feed after signing it.
       - name: Capture development windows on runner
         run: |
@@ -120,7 +125,7 @@ jobs:
           wait "$PID"
           cat ui-capture.log
           grep -q HOME_EAR_UI_CAPTURE_SUCCEEDED ui-capture.log
-          for NAME in panel settings settings-lower onboarding setup-step-2 setup-step-3 setup-step-4 panel-assist setup-assist; do
+          for NAME in panel settings settings-lower onboarding setup-step-2 setup-step-3 setup-step-4 panel-assist setup-assist settings-beta settings-beta-lower; do
             test -s "ui-capture/HomeEar-$NAME.png"
             sips -g pixelWidth -g pixelHeight "ui-capture/HomeEar-$NAME.png"
             echo "SCREENSHOT_${NAME}_BASE64_BEGIN"
