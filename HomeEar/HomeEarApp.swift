@@ -232,6 +232,9 @@ struct HomeEarSettingsView: View {
                 haState.selectedBackend = "home_assistant"
                 captures.append(("panel-assist", AnyView(PanelView(state: haState).preferredColorScheme(.dark)), NSSize(width: 320, height: 410)))
                 captures.append(("setup-assist", AnyView(OnboardingView(state: haState, initialStep: 2).preferredColorScheme(.dark)), NSSize(width: 560, height: 540)))
+                let betaState = AppState()
+                betaState.updates.setChannel(.beta)
+                captures.append(("settings-beta", AnyView(HomeEarSettingsView(state: betaState).preferredColorScheme(.dark)), NSSize(width: 580, height: 750)))
                 for (name, view, size) in captures {
                     let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -251,7 +254,7 @@ struct HomeEarSettingsView: View {
                     guard capture.terminationStatus == 0 else {
                         throw NSError(domain: "HomeEarUICapture", code: Int(capture.terminationStatus))
                     }
-                    if name == "settings" {
+                    if name == "settings" || name == "settings-beta" {
                         func scrollViews(_ view: NSView) -> [NSScrollView] {
                             (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap { scrollViews($0) }
                         }
@@ -264,7 +267,7 @@ struct HomeEarSettingsView: View {
                         try await Task.sleep(nanoseconds: 500_000_000)
                         let lower = Process()
                         lower.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-                        lower.arguments = ["-x", "-o", "-l", String(window.windowNumber), directory + "/HomeEar-settings-lower.png"]
+                        lower.arguments = ["-x", "-o", "-l", String(window.windowNumber), directory + "/HomeEar-" + name + "-lower.png"]
                         try lower.run(); lower.waitUntilExit()
                         guard lower.terminationStatus == 0 else { throw NSError(domain: "HomeEarUICapture", code: 1) }
                     }
@@ -284,6 +287,15 @@ struct UpdateSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+            Picker("Update channel", selection: Binding(get: { updates.channel }, set: { updates.setChannel($0) })) {
+                Text("Stable").tag(UpdateChannel.stable)
+                Text("Beta").tag(UpdateChannel.beta)
+            }.pickerStyle(.segmented).disabled(!updates.canCheckForUpdates)
+            if updates.channel == .beta {
+                Label("Beta versions are unfinished and may contain bugs. Use them only if you are comfortable testing.", systemImage: "exclamationmark.triangle")
+                    .font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+            }
+            Text(updates.status).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Toggle("Check for updates automatically", isOn: Binding(get: { updates.automaticallyChecks }, set: { updates.setAutomaticChecks($0) }))
             HStack {
                 Button("Check for updates...") { updates.check() }.disabled(!updates.canCheckForUpdates)
