@@ -8,6 +8,10 @@ settings:
     SWIFT_VERSION: '6.0'
     MACOSX_DEPLOYMENT_TARGET: '26.0'
     CODE_SIGNING_ALLOWED: NO
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
 targets:
   HomeEar:
     type: application
@@ -26,6 +30,8 @@ targets:
         INFOPLIST_FILE: HomeEar/Info.plist
         CODE_SIGN_ENTITLEMENTS: HomeEar/HomeEar.entitlements
         CODE_SIGNING_ALLOWED: NO
+    dependencies:
+      - package: Sparkle
     scheme:
       testTargets: []
   HomeEarTests:
