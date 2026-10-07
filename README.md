@@ -60,3 +60,7 @@ The CI artifact contains a drag-to-Applications DMG and a ZIP. Copy HomeEar to A
 ## Release gate
 
 CI builds and verifies packages and prepares signed update archives/appcast as artifacts only. It never publishes a release automatically. A release requires review of real-window screenshots and explicit approval. Future release assets must include the generated versioned ZIP and unchanged signed appcast.xml; changing a signed file requires re-signing. The update-signing key stays in the encrypted repository secret, never source or logs.
+
+## Update channels
+
+0.1.5 adds Stable and Beta choices in Settings > Update. Stable looks for regular GitHub releases; Beta looks for prereleases and displays an unfinished-software warning. The selected release must provide a signed appcast.xml; missing assets, network errors and signature failures remain errors. An empty channel has a clear no-release message. Each check resolves the selected channel before Sparkle verifies and offers an update. 0.1.4 requires one manual install of this fix because its original stable-latest feed returns 404 when only a prerelease exists.
