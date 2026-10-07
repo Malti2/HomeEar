@@ -96,7 +96,10 @@ jobs:
           printf '%s' "$SPARKLE_PRIVATE_KEY" | "$TOOLS" --ed-key-file - --download-url-prefix "https://github.com/Malti2/HomeEar/releases/download/v$VERSION/" dist/updates
           test -s dist/updates/appcast.xml
           grep -q edSignature dist/updates/appcast.xml
-          grep -q sparkle:signature dist/updates/appcast.xml
+          SIGN_TOOL="$(dirname "$TOOLS")/sign_update"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - --verify dist/updates/appcast.xml
+          SIG=$(python3 -c 'import xml.etree.ElementTree as E; r=E.parse("dist/updates/appcast.xml"); print(r.find(".//enclosure").attrib["{http://www.andymatuschak.org/xml-namespaces/sparkle}edSignature"])')
+          printf '%s' "$SPARKLE_PRIVATE_KEY" | "$SIGN_TOOL" --ed-key-file - --verify "dist/updates/HomeEar-$VERSION.zip" "$SIG"
           # Never edit the feed after signing it.
       - name: Capture development windows on runner
         run: |
