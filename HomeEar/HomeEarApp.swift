@@ -199,8 +199,9 @@ struct HomeEarSettingsView: View {
             }
             Section("General") {
                 Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))
-                Button("Check updates") { state.updates.check() }
-                Text(state.updates.status).font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Update") {
+                UpdateSettingsView(updates: state.updates)
             }
         }
         .formStyle(.grouped)
@@ -274,6 +275,22 @@ struct HomeEarSettingsView: View {
                 print("HOME_EAR_UI_CAPTURE_FAILED: \(error)")
             }
             NSApp.terminate(nil)
+        }
+    }
+}
+
+struct UpdateSettingsView: View {
+    @ObservedObject var updates: UpdateChecker
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+            Toggle("Check for updates automatically", isOn: Binding(get: { updates.automaticallyChecks }, set: { updates.setAutomaticChecks($0) }))
+            HStack {
+                Button("Check for updates...") { updates.check() }.disabled(!updates.canCheckForUpdates)
+                Button("GitHub Releases") { updates.openRelease() }
+            }
+            Text("Updates are downloaded from GitHub Releases, verified, then installed after confirmation. HomeEar relaunches to finish. Your settings and Keychain tokens stay on this Mac.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
 }
