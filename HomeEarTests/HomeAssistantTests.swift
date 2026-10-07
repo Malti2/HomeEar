@@ -46,3 +46,25 @@ final class HomeAssistantTests: XCTestCase {
         XCTAssertThrowsError(try HomeAssistantClient.parseReply(Data(#"{"response":{}}"#.utf8)))
     }
 }
+
+final class UpdateDiscoveryTests: XCTestCase {
+    let sample = Data(#"[{"draft":false,"prerelease":true,"tag_name":"v0.1.4","assets":[{"name":"appcast.xml","browser_download_url":"https://github.com/Malti2/HomeEar/releases/download/v0.1.4/appcast.xml"}]}]"#.utf8)
+    func testStableChannelHasNoRelease() throws {
+        XCTAssertNil(try ReleaseDiscovery.feed(from: sample, channel: .stable))
+    }
+    func testBetaChannelFindsPrerelease() throws {
+        XCTAssertEqual(try ReleaseDiscovery.feed(from: sample, channel: .beta)?.lastPathComponent, "appcast.xml")
+    }
+    func testMissingFeedIsAnErrorNotEmptyChannel() {
+        let data = Data(#"[{"draft":false,"prerelease":false,"tag_name":"v1","assets":[]}]"#.utf8)
+        XCTAssertThrowsError(try ReleaseDiscovery.feed(from: data, channel: .stable))
+    }
+    func testUntrustedFeedIsRejected() {
+        let data = Data(#"[{"draft":false,"prerelease":false,"tag_name":"v1","assets":[{"name":"appcast.xml","browser_download_url":"https://example.test/appcast.xml"}]}]"#.utf8)
+        XCTAssertThrowsError(try ReleaseDiscovery.feed(from: data, channel: .stable))
+    }
+    func testDraftIsIgnored() throws {
+        let data = Data(#"[{"draft":true,"prerelease":false,"tag_name":"v1","assets":[]}]"#.utf8)
+        XCTAssertNil(try ReleaseDiscovery.feed(from: data, channel: .stable))
+    }
+}
