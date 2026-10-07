@@ -24,24 +24,7 @@ jobs:
           test -s dist/updates/HomeEar-0.1.5.zip
           test -s dist/updates/appcast.xml
           sha256sum --check dist/SHA256SUMS.txt
-          if gh release view v0.1.5 --repo "$REPO" >/dev/null 2>&1; then
-            echo 'Release already exists; no overwrite.'
-            exit 1
-          fi
-          cat > notes.md <<'NOTES'
-          HomeEar 0.1.5 test release for Apple Silicon, macOS 26 or newer.
-
-          - Stable/Beta selection in Settings. Stable selects regular releases; Beta selects prereleases.
-          - Visible warning that Beta versions are unfinished and may contain bugs.
-          - Empty selected channels show a no-release state. Removed the explanation beneath the update buttons.
-          - Sparkle 2.10.0 signed update feeds and archives, with GitHub release discovery instead of the broken latest-release URL.
-          - Poke and direct Home Assistant Assist remain selectable.
-          - CI: 35 tests passed; package integrity, generated update signatures, and embedded fallback feed verified.
-
-          This is NOT Developer ID signed or notarized. macOS may require Open Anyway in Privacy & Security. No quarantine-removal commands are provided.
-
-          Updating from 0.1.4 requires one manual installation because its embedded stable-latest feed returns 404. End-to-end update download/install/relaunch and interactive no-newer-version behavior remain untested. This is a prerelease, not a stable promotion.
-
-          No live Home Assistant control or microphone-latency result is claimed. This release does not include a newly selected full UI redesign.
-          NOTES
-          gh release create v0.1.5 --repo "$REPO" --target "$SHA" --prerelease --title 'HomeEar 0.1.5 - Test Release' --notes-file notes.md dist/HomeEar.dmg dist/HomeEar.zip dist/updates/HomeEar-0.1.5.zip dist/updates/appcast.xml dist/SHA256SUMS.txt dist/gatekeeper-assessment.txt
+          test "$(gh release view v0.1.5 --repo "$REPO" --json isPrerelease --jq .isPrerelease)" = true
+          test "$(gh api repos/$REPO/git/ref/tags/v0.1.5 --jq .object.sha)" = "$SHA"
+          test "$(gh release view v0.1.5 --repo "$REPO" --json assets --jq '.assets | length')" = 0
+          gh release upload v0.1.5 --repo "$REPO" dist/HomeEar.dmg dist/HomeEar.zip dist/updates/HomeEar-0.1.5.zip dist/updates/appcast.xml dist/SHA256SUMS.txt dist/gatekeeper-assessment.txt
