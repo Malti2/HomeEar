@@ -8,13 +8,21 @@
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.3</string>
-  <key>CFBundleVersion</key><string>4</string>
+  <key>CFBundleShortVersionString</key><string>0.1.4</string>
+  <key>CFBundleVersion</key><string>5</string>
   <key>LSMinimumSystemVersion</key><string>26.0</string>
   <key>LSUIElement</key><true/>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
   <key>NSLocalNetworkUsageDescription</key><string>HomeEar connects to your configured Home Assistant server.</string>
   <key>NSHighResolutionCapable</key><true/>
-  <key>NSMicrophoneUsageDescription</key><string>HomeEar transcribes microphone audio on this Mac and sends only matched text requests to Poke.</string>
+  <key>NSMicrophoneUsageDescription</key><string>HomeEar transcribes microphone audio on this Mac and sends only matched text requests to your selected backend.</string>
   <key>NSSpeechRecognitionUsageDescription</key><string>HomeEar uses on-device speech recognition to understand your voice requests.</string>
+  <key>SUFeedURL</key><string>https://github.com/Malti2/HomeEar/releases/latest/download/appcast.xml</string>
+  <key>SUPublicEDKey</key><string>UlrB4D5gSKb/4oRAJ6hdVJuWLpBeKuEurOriNh6OJvE=</string>
+  <key>SUVerifyUpdateBeforeExtraction</key><true/>
+  <key>SURequireSignedFeed</key><true/>
+  <key>SUSignedFeedFailureExpirationInterval</key><integer>0</integer>
+  <key>SUEnableAutomaticChecks</key><false/>
+  <key>SUAutomaticallyUpdate</key><false/>
+  <key>SUEnableSystemProfiling</key><false/>
 </dict></plist>
