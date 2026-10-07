@@ -1,30 +1,37 @@
 import Foundation
 import AppKit
+import Combine
+import Sparkle
 
+/// Sparkle validates signed feeds and archives before installing or relaunching.
+/// No quarantine removal, shell installer, or unverified release-asset fallback.
 @MainActor final class UpdateChecker: ObservableObject {
-    @Published private(set) var status = "Check for updates"
-    @Published private(set) var releaseURL: URL?
-    func check() {
-        status = "Checking..."
-        Task {
-            do {
-                var request = URLRequest(url: URL(string: "https://api.github.com/repos/Malti2/HomeEar/releases/latest")!)
-                request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-                let (data, response) = try await URLSession.shared.data(for: request)
-                guard let http = response as? HTTPURLResponse else { throw UpdateError.unavailable }
-                if http.statusCode == 404 { status = "No public release yet"; return }
-                guard http.statusCode == 200,
-                      let record = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let tag = record["tag_name"] as? String,
-                      let url = record["html_url"] as? String,
-                      let release = URL(string: url), release.host == "github.com",
-                      release.path.hasPrefix("/Malti2/HomeEar/releases/") else { throw UpdateError.unavailable }
-                releaseURL = release
-                let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
-                status = tag.trimmingCharacters(in: CharacterSet(charactersIn: "v")) == current ? "Up to date (\(tag))" : "Release \(tag) available to review"
-            } catch { status = "Could not check releases" }
+    @Published private(set) var status = "Updates from GitHub Releases"
+    @Published private(set) var canCheckForUpdates = false
+    @Published private(set) var automaticallyChecks = false
+    private let controller: SPUStandardUpdaterController
+
+    init() {
+        // Screenshots and unit tests must not check the network or install updates.
+        let capture = CommandLine.arguments.contains("--capture-ui")
+        let tests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+        controller = SPUStandardUpdaterController(startingUpdater: false,
+            updaterDelegate: nil, userDriverDelegate: nil)
+        if !capture && !tests {
+            controller.startUpdater()
+            controller.updater.publisher(for: \.canCheckForUpdates).assign(to: &$canCheckForUpdates)
+            controller.updater.publisher(for: \.automaticallyChecksForUpdates).assign(to: &$automaticallyChecks)
         }
     }
-    func openRelease() { if let releaseURL { NSWorkspace.shared.open(releaseURL) } }
-    enum UpdateError: Error { case unavailable }
+    func check() {
+        guard canCheckForUpdates else { return }
+        status = "Checking signed release feed..."
+        controller.checkForUpdates(nil)
+    }
+    func setAutomaticChecks(_ enabled: Bool) {
+        controller.updater.automaticallyChecksForUpdates = enabled
+    }
+    func openRelease() {
+        NSWorkspace.shared.open(URL(string: "https://github.com/Malti2/HomeEar/releases")!)
+    }
 }
