@@ -4,10 +4,13 @@ import Foundation
 enum FilterSource: String {
     case wakeWord = "Wake word"
     case proactive = "Proactive filter"
+    case followUp = "Follow-up"
 }
 
 enum FilterDecision {
     case accept(source: FilterSource, reason: String)
+    /// One point short and command-shaped: worth asking about instead of guessing.
+    case uncertain(reason: String)
     case reject(reason: String)
 }
 
@@ -86,8 +89,32 @@ struct RequestFilter {
         if score >= threshold {
             return .accept(source: .proactive, reason: "Score \(score) (\(hits.joined(separator: "+")))")
         }
+        let commandShaped = hits.contains { ["verb", "infinitive", "polite", "question"].contains($0) }
+        if score == threshold - 1, hits.contains("entity"), commandShaped {
+            return .uncertain(reason: "Score \(score) (\(hits.joined(separator: "+")))")
+        }
         return .reject(reason: "Background speech filtered (score \(score))")
     }
+
+    /// Short utterance right after a spoken reply that reads like a continuation
+    /// ("und im Flur auch", "mach es heller") rather than background talk.
+    static func looksLikeFollowUp(_ text: String, extra: Set<String> = []) -> Bool {
+        let tokens = text.lowercased(with: posix).split(whereSeparator: isSeparator).map(String.init)
+        guard !tokens.isEmpty, tokens.count <= 8 else { return false }
+        if let first = tokens.first, subjects.contains(first) { return false }
+        if tokens.contains(where: { pastMarkers.contains($0) }) { return false }
+        if let first = tokens.first, connectors.contains(first) { return true }
+        let hasEntity = mentionsEntity(tokens, extra: extra)
+        if tokens.prefix(3).contains(where: { verbs.contains($0) }) { return true }
+        // "machen" alone is everyday talk; an infinitive only counts next to a device or room.
+        if hasEntity, mentionsInfinitive(tokens) { return true }
+        // A bare room or device name ("im Flur") is fine, a whole sentence about one is not.
+        return tokens.count <= 4 && hasEntity
+    }
+
+    private static let connectors: Set<String> = [
+        "und", "auch", "noch", "dann", "aber", "außerdem", "and", "also", "then", "now",
+    ]
 
     /// Splits a user-entered keyword list ("ventilator, kamin garage") into
     /// lowercase single tokens.

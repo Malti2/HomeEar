@@ -93,4 +93,20 @@ final class UpdateDiscoveryTests: XCTestCase {
             return XCTFail("imported name should count as an entity")
         }
     }
+    func testParsesConversationIDAndFollowUpFlag() throws {
+        let json = #"{"response":{"response_type":"query_answer","speech":{"plain":{"speech":"Welches Licht meinst du?"}},"data":{}},"conversation_id":"abc123"}"#
+        let reply = try HomeAssistantClient.parseReply(Data(json.utf8))
+        XCTAssertEqual(reply.conversationID, "abc123")
+        XCTAssertTrue(reply.expectsFollowUp, "a question mark means HomeEar should keep listening")
+    }
+    func testExplicitContinueFlagWinsOverWording() throws {
+        let json = #"{"response":{"response_type":"query_answer","speech":{"plain":{"speech":"Soll ich?"}},"data":{}},"continue_conversation":false}"#
+        let reply = try HomeAssistantClient.parseReply(Data(json.utf8))
+        XCTAssertFalse(reply.expectsFollowUp)
+        XCTAssertNil(reply.conversationID)
+    }
+    func testPlainStatementDoesNotExpectFollowUp() throws {
+        let json = #"{"response":{"response_type":"action_done","speech":{"plain":{"speech":"Okay."}},"data":{"success":[{"name":"Licht"}],"failed":[]}}}"#
+        XCTAssertFalse(try HomeAssistantClient.parseReply(Data(json.utf8)).expectsFollowUp)
+    }
 }

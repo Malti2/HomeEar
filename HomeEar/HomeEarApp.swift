@@ -54,6 +54,19 @@ struct PanelView: View {
                     .font(.caption)
                     .foregroundStyle(state.microphoneOn ? Color.green : Color.secondary)
             }
+            if let pending = state.pendingConfirmation {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("DID YOU MEAN?").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    Text(pending.text).font(.subheadline).lineLimit(3)
+                    HStack {
+                        Button("Send") { state.router.confirmPending() }.buttonStyle(.borderedProminent)
+                        Button("Discard") { state.router.discardPending() }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+            }
             VStack(alignment: .leading, spacing: 8) {
                 Text("LAST HEARD").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                 Text(state.latestText).font(.subheadline).lineLimit(4)
@@ -257,6 +270,12 @@ struct HomeEarSettingsView: View {
                 Toggle("Speak replies aloud", isOn: $state.speakReplies)
             } header: { Text("Replies") } footer: {
                 note("Home Assistant answers are read aloud. While HomeEar speaks, and for a moment after, microphone input is ignored so it never hears itself. Poke speaks through its own voice tool either way.")
+            }
+            Section {
+                Toggle("Keep listening after a reply", isOn: $state.followUpEnabled)
+                Toggle("Ask when unsure", isOn: $state.askWhenUnsure)
+            } header: { Text("Conversation") } footer: {
+                note("After a spoken reply, a short answer or follow-up (\"und im Flur auch\") works without the wake word for a few seconds. When a request is almost, but not quite, a command, HomeEar asks \"Did you mean …?\" and waits for yes or no instead of guessing.")
             }
             Section {
                 Toggle("Hey Poke wake word", isOn: $state.wakeWordEnabled)

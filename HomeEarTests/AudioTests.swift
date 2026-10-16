@@ -80,8 +80,8 @@ final class AudioTests: XCTestCase {
     func testFarCueLowersProactiveScore() {
         let text = "mach das licht im flur an"
         guard case .accept = RequestFilter.checkProactive(text, strict: true) else { return XCTFail("baseline") }
-        guard case .reject = RequestFilter.checkProactive(text, strict: true, audio: .far) else {
-            return XCTFail("far speech should be rejected in strict mode")
+        if case .accept = RequestFilter.checkProactive(text, strict: true, audio: .far) {
+            XCTFail("far speech must not be sent automatically in strict mode")
         }
     }
 

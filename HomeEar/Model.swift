@@ -92,6 +92,17 @@ struct RequestRecord: Identifiable {
     @Published var speakReplies = UserDefaults.standard.object(forKey: "speakReplies") as? Bool ?? true {
         didSet { UserDefaults.standard.set(speakReplies, forKey: "speakReplies") }
     }
+    @Published var followUpEnabled = UserDefaults.standard.object(forKey: "followUpEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(followUpEnabled, forKey: "followUpEnabled") }
+    }
+    @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
+    }
+    /// A request the router is unsure about and has asked the user to confirm.
+    @Published var pendingConfirmation: PendingRequest?
+    /// Home Assistant keeps context for follow-ups while the same conversation id is reused.
+    private var haConversationID: String?
+    private var haConversationAt: TimeInterval = 0
     private var echoGuard = EchoGuard()
     private var ttsStateBeforeSpeaking: String?
     @Published var householdNames = UserDefaults.standard.string(forKey: "householdNames") ?? "" {
@@ -131,6 +142,8 @@ struct RequestRecord: Identifiable {
     init() {
         router.voiceProfile.referenceSNR = UserDefaults.standard.object(forKey: "voiceReferenceSNR") as? Double
         router.onVoiceReferenceChanged = { UserDefaults.standard.set($0, forKey: "voiceReferenceSNR") }
+        router.onAskBack = { [weak self] pending in self?.askBack(pending) }
+        router.onPendingChanged = { [weak self] pending in self?.pendingConfirmation = pending }
         router.onDeliver = { [weak self] text, source in self?.forwardRequest(text: text, source: source) }
         router.onDecision = { [weak self] decision in self?.latestDecision = decision }
         router.onCommandModeChanged = { [weak self] active in
@@ -177,10 +190,17 @@ struct RequestRecord: Identifiable {
         if ttsState != "Speaking" { ttsStateBeforeSpeaking = ttsState }
         ttsState = "Speaking"
     }
-    func speechDidEnd() {
+    func speechDidEnd(expectsAnswer: Bool) {
         echoGuard.ended(at: ProcessInfo.processInfo.systemUptime)
         ttsState = ttsStateBeforeSpeaking ?? "Ready"
         ttsStateBeforeSpeaking = nil
+        // The reply is out; the next few seconds may hold an answer or a follow-up.
+        if microphoneOn { router.openFollowUp(expectsAnswer: expectsAnswer) }
+    }
+    private func askBack(_ pending: PendingRequest) {
+        guard speakReplies else { return }
+        let prompt = language.hasPrefix("de") ? "Meintest du: \(pending.text)?" : "Did you mean: \(pending.text)?"
+        tts.speak(prompt, expectsAnswer: true)
     }
     func receive(_ text: String, isFinal: Bool) {
         // Our own voice coming back through the microphone is not a request.
@@ -194,6 +214,8 @@ struct RequestRecord: Identifiable {
         router.config.extraEntities = extra
         router.config.addressees = RequestFilter.parseKeywords(householdNames)
         router.config.audioCuesEnabled = audioCuesEnabled
+        router.config.followUpEnabled = followUpEnabled
+        router.config.askWhenUnsure = askWhenUnsure
         let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
         router.receive(text, isFinal: isFinal, audio: features)
     }
@@ -222,11 +244,19 @@ struct RequestRecord: Identifiable {
                 defer { haRequestInFlight = false }
                 do {
                     let client = try HomeAssistantClient(server: server, token: token)
-                    let response = try await client.process(text, language: locale)
+                    let now = ProcessInfo.processInfo.systemUptime
+                    let conversation = now - haConversationAt < 45 ? haConversationID : nil
+                    let response = try await client.process(text, language: locale, conversationID: conversation)
+                    haConversationID = response.conversationID
+                    haConversationAt = ProcessInfo.processInfo.systemUptime
                     haResponse = response.speech
                     haState = response.status
                     latestDecision = "Home Assistant: \(response.status)"
-                    if speakReplies, !response.speech.isEmpty { tts.speak(response.speech) }
+                    if speakReplies, !response.speech.isEmpty {
+                        tts.speak(response.speech, expectsAnswer: response.expectsFollowUp)
+                    } else if response.expectsFollowUp, microphoneOn {
+                        router.openFollowUp(expectsAnswer: true)
+                    }
                 } catch {
                     // Never retry a command after a timeout: it might have executed.
                     haState = error.localizedDescription
@@ -365,6 +395,10 @@ enum HATokenStore {
 struct HAReply: Sendable {
     let status: String
     let speech: String
+    /// Reuse this id on the next request to keep context ("und im Flur auch").
+    var conversationID: String?
+    /// Home Assistant (or the wording of the reply) expects an answer.
+    var expectsFollowUp = false
 }
 
 /// Refuse redirects so an authenticated request never migrates to another host.
@@ -455,9 +489,10 @@ struct HomeAssistantClient: Sendable {
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               object["message"] as? String == "API running." else { throw Failure.malformed }
     }
-    func process(_ text: String, language: String) async throws -> HAReply {
-        let body = try JSONSerialization.data(withJSONObject: ["text": text, "language": language,
-                                                                "agent_id": "home_assistant"])
+    func process(_ text: String, language: String, conversationID: String? = nil) async throws -> HAReply {
+        var payload: [String: Any] = ["text": text, "language": language, "agent_id": "home_assistant"]
+        if let conversationID { payload["conversation_id"] = conversationID }
+        let body = try JSONSerialization.data(withJSONObject: payload)
         let data = try await perform(request(path: "api/conversation/process", method: "POST", body: body))
         return try Self.parseReply(data)
     }
@@ -467,14 +502,20 @@ struct HomeAssistantClient: Sendable {
               let type = response["response_type"] as? String else { throw Failure.malformed }
         let speech = ((response["speech"] as? [String: Any])?["plain"] as? [String: Any])?["speech"] as? String ?? ""
         let details = response["data"] as? [String: Any] ?? [:]
+        let expects = object["continue_conversation"] as? Bool
+            ?? speech.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?")
+        func reply(_ status: String) -> HAReply {
+            HAReply(status: status, speech: speech, conversationID: object["conversation_id"] as? String,
+                    expectsFollowUp: expects)
+        }
         switch type {
         case "action_done":
             let failures = details["failed"] as? [[String: Any]] ?? []
             let successes = details["success"] as? [[String: Any]] ?? []
             guard !successes.isEmpty || !failures.isEmpty else { throw Failure.malformed }
-            return HAReply(status: failures.isEmpty ? "Action completed" : "Some targets failed; check Home Assistant", speech: speech)
-        case "query_answer": return HAReply(status: "Answer received", speech: speech)
-        case "error": return HAReply(status: "Not completed: " + (details["code"] as? String ?? "unknown"), speech: speech)
+            return reply(failures.isEmpty ? "Action completed" : "Some targets failed; check Home Assistant")
+        case "query_answer": return reply("Answer received")
+        case "error": return reply("Not completed: " + (details["code"] as? String ?? "unknown"))
         default: throw Failure.malformed
         }
     }

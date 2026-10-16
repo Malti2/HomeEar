@@ -55,10 +55,16 @@ final class FilterTests: XCTestCase {
         XCTAssertEqual(source, .proactive)
     }
 
+    /// Nothing may be sent automatically: a reject, or an "ask first" for borderline cases.
     private func assertReject(_ text: String, strict: Bool, file: StaticString = #file, line: UInt = #line) {
-        let decision = RequestFilter.checkProactive(text, strict: strict)
-        guard case .reject = decision else {
-            XCTFail("expected reject for \(text)", file: file, line: line)
+        if case .accept = RequestFilter.checkProactive(text, strict: strict) {
+            XCTFail("expected no automatic send for \(text)", file: file, line: line)
+        }
+    }
+
+    private func assertUncertain(_ text: String, strict: Bool, file: StaticString = #file, line: UInt = #line) {
+        guard case .uncertain = RequestFilter.checkProactive(text, strict: strict) else {
+            XCTFail("expected uncertain for \(text)", file: file, line: line)
             return
         }
     }
@@ -93,7 +99,7 @@ final class FilterTests: XCTestCase {
     }
 
     func testQuestionNeedsRelaxedMode() {
-        assertReject("wie wird das wetter morgen", strict: true)
+        assertUncertain("wie wird das wetter morgen", strict: true)
         assertAccept("wie wird das wetter morgen", strict: false)
     }
 
@@ -129,6 +135,26 @@ final class FilterTests: XCTestCase {
 
     func testPoliteFirstPersonStillAccepted() {
         assertAccept("ich möchte das licht heller haben", strict: true)
+    }
+
+    func testBorderlineCommandIsAskedAbout() {
+        // verb 3 + entity 2 - past marker 2 = 3, one short of strict.
+        assertUncertain("mach das licht an hat er gesagt", strict: true)
+    }
+
+    func testNoEntityIsNeverWorthAskingAbout() {
+        guard case .reject = RequestFilter.checkProactive("mach doch mal was", strict: true) else {
+            return XCTFail("a bare verb is not a request")
+        }
+    }
+
+    func testFollowUpShapes() {
+        for text in ["und im schlafzimmer auch", "im flur", "mach es heller", "dann noch die küche", "das licht im bad ausmachen"] {
+            XCTAssertTrue(RequestFilter.looksLikeFollowUp(text), text)
+        }
+        for text in ["ich glaube das war gestern", "das licht ist zu hell", "er hat das licht angemacht", "was machen wir heute abend noch so"] {
+            XCTAssertFalse(RequestFilter.looksLikeFollowUp(text), text)
+        }
     }
 
     func testCustomKeywords() {
@@ -239,8 +265,8 @@ final class FilterCorpusTests: XCTestCase {
 
     func testChatterIsRejectedEvenInRelaxedMode() {
         for text in Self.chatter {
-            guard case .reject = RequestFilter.checkProactive(text, strict: false) else {
-                XCTFail("expected reject (relaxed): \(text)"); continue
+            if case .accept = RequestFilter.checkProactive(text, strict: false) {
+                XCTFail("expected no automatic send (relaxed): \(text)")
             }
         }
     }
@@ -250,8 +276,8 @@ final class FilterCorpusTests: XCTestCase {
         guard case .accept = RequestFilter.checkProactive(text, strict: true) else {
             return XCTFail("should accept without the name configured")
         }
-        guard case .reject = RequestFilter.checkProactive(text, strict: true, addressees: ["anna"]) else {
-            return XCTFail("should reject when anna is a household name")
+        if case .accept = RequestFilter.checkProactive(text, strict: true, addressees: ["anna"]) {
+            XCTFail("should not send when anna is a household name")
         }
     }
 }
