@@ -67,4 +67,30 @@ final class UpdateDiscoveryTests: XCTestCase {
         let data = Data(#"[{"draft":true,"prerelease":false,"tag_name":"v1","assets":[]}]"#.utf8)
         XCTAssertNil(try ReleaseDiscovery.feed(from: data, channel: .stable))
     }
+    func testParsesVocabularyResponse() throws {
+        let json = #"{"areas":["Wohnzimmer","Büro"],"names":["Stehlampe Ecke","Hue Go 1","Deckenlicht"]}"#
+        let names = try HomeAssistantClient.parseVocabulary(Data(json.utf8))
+        XCTAssertEqual(names, ["Wohnzimmer", "Büro", "Stehlampe Ecke", "Hue Go 1", "Deckenlicht"])
+    }
+    func testRejectsMalformedVocabulary() {
+        for json in ["not json", "{}", #"{"areas":[],"names":[]}"#, "[]"] {
+            XCTAssertThrowsError(try HomeAssistantClient.parseVocabulary(Data(json.utf8)), json)
+        }
+    }
+    func testVocabularyWordsDropNoise() {
+        let words = RequestFilter.vocabularyWords(from: ["Stehlampe Ecke", "Hue Go 1", "Büro", "Licht und Schatten"])
+        XCTAssertEqual(words, ["stehlampe", "ecke", "hue", "büro", "licht", "schatten"])
+    }
+    func testVocabularyWordsAreCapped() {
+        let names = (0..<1000).map { "gerät\($0)x" }
+        XCTAssertEqual(RequestFilter.vocabularyWords(from: names, limit: 50).count, 50)
+    }
+    func testImportedNamesMakeCustomRequestsRecognisable() {
+        let text = "mach die lesecke an"
+        guard case .reject = RequestFilter.checkProactive(text, strict: true) else { return XCTFail("unknown name") }
+        let words = RequestFilter.vocabularyWords(from: ["Lesecke"])
+        guard case .accept = RequestFilter.checkProactive(text, strict: true, extra: words) else {
+            return XCTFail("imported name should count as an entity")
+        }
+    }
 }

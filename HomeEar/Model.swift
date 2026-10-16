@@ -82,6 +82,13 @@ struct RequestRecord: Identifiable {
         didSet { UserDefaults.standard.set(audioCuesEnabled, forKey: "audioCuesEnabled") }
     }
     let levels = AudioLevelTracker()
+    /// Words from Home Assistant room and device names; cached so the filter works offline.
+    @Published var haWords = Set(UserDefaults.standard.stringArray(forKey: "haVocabularyWords") ?? [])
+    @Published var haVocabularyState = ""
+    @Published var useHAVocabulary = UserDefaults.standard.object(forKey: "useHAVocabulary") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(useHAVocabulary, forKey: "useHAVocabulary") }
+    }
+    private var haVocabularyBusy = false
     @Published var householdNames = UserDefaults.standard.string(forKey: "householdNames") ?? "" {
         didSet { UserDefaults.standard.set(householdNames, forKey: "householdNames") }
     }
@@ -130,6 +137,9 @@ struct RequestRecord: Identifiable {
         quietTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.evaluateQuietHours() }
         }
+        haVocabularyState = haWords.isEmpty ? "Not imported" : "\(haWords.count) words imported"
+        // Refresh quietly at launch, but only after the user imported once.
+        if !haWords.isEmpty { importHAVocabulary(silent: true) }
         Task { @MainActor in
             do { try mcp.start(); if completedSetup && selectedBackend == "poke" { tunnel.start() } }
             catch { ttsState = "Local tool unavailable: \(error.localizedDescription)" }
@@ -161,7 +171,9 @@ struct RequestRecord: Identifiable {
         router.config.wakeWordEnabled = wakeWordEnabled
         router.config.proactiveEnabled = proactiveEnabled
         router.config.strictFilter = strictFilter
-        router.config.extraEntities = RequestFilter.parseKeywords(customKeywords)
+        var extra = RequestFilter.parseKeywords(customKeywords)
+        if useHAVocabulary { extra.formUnion(haWords) }
+        router.config.extraEntities = extra
         router.config.addressees = RequestFilter.parseKeywords(householdNames)
         router.config.audioCuesEnabled = audioCuesEnabled
         let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
@@ -254,6 +266,38 @@ struct RequestRecord: Identifiable {
                 haState = "Connected; API authenticated"
             } catch { haState = error.localizedDescription }
         }
+    }
+    /// Reads room and device names from Home Assistant so the filter recognises
+    /// requests that use your own names ("mach die Lesecke an").
+    func importHAVocabulary(silent: Bool = false) {
+        guard !haVocabularyBusy else { return }
+        guard let token = HATokenStore.load(), !token.isEmpty else {
+            if !silent { haVocabularyState = "Save a token first" }
+            return
+        }
+        let server = haURL
+        haVocabularyBusy = true
+        if !silent { haVocabularyState = "Importing..." }
+        Task {
+            defer { haVocabularyBusy = false }
+            do {
+                let client = try HomeAssistantClient(server: server, token: token)
+                let names = try await client.fetchVocabulary()
+                let words = RequestFilter.vocabularyWords(from: names)
+                haWords = words
+                UserDefaults.standard.set(words.sorted(), forKey: "haVocabularyWords")
+                haVocabularyState = "\(words.count) words from \(names.count) rooms and devices"
+            } catch HomeAssistantClient.Failure.resultUnconfirmed {
+                if !silent { haVocabularyState = "Could not reach Home Assistant." }
+            } catch {
+                if !silent { haVocabularyState = error.localizedDescription }
+            }
+        }
+    }
+    func clearHAVocabulary() {
+        haWords = []
+        UserDefaults.standard.removeObject(forKey: "haVocabularyWords")
+        haVocabularyState = "Not imported"
     }
     func speakHAResponse() {
         guard !haResponse.isEmpty else { return }
@@ -372,6 +416,21 @@ struct HomeAssistantClient: Sendable {
         if http.statusCode == 401 || http.statusCode == 403 { throw Failure.authorization }
         guard (200..<300).contains(http.statusCode) else { throw Failure.status(http.statusCode) }
         return data
+    }
+    /// Room names and the names of controllable devices, for the request filter.
+    /// A read-only template call; nothing in Home Assistant is changed.
+    func fetchVocabulary() async throws -> [String] {
+        let body = try JSONSerialization.data(withJSONObject: ["template": Self.vocabularyTemplate])
+        let data = try await perform(request(path: "api/template", method: "POST", body: body))
+        return try Self.parseVocabulary(data)
+    }
+    private static let vocabularyTemplate = #"{{ {"areas": areas() | map("area_name") | list, "names": states | selectattr("domain", "in", ["light","switch","cover","climate","fan","media_player","scene","script","lock","vacuum","humidifier","input_boolean"]) | map(attribute="name") | list} | tojson }}"#
+    static func parseVocabulary(_ data: Data) throws -> [String] {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { throw Failure.malformed }
+        let areas = object["areas"] as? [String] ?? []
+        let names = object["names"] as? [String] ?? []
+        guard !(areas.isEmpty && names.isEmpty) else { throw Failure.malformed }
+        return areas + names
     }
     func testConnection() async throws {
         let data = try await perform(request(path: "api/"))

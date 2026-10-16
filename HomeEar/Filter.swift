@@ -105,6 +105,28 @@ struct RequestFilter {
         return zip(tokens, tokens.dropFirst()).contains { infinitives.contains($0 + $1) }
     }
 
+    /// Turns Home Assistant device and room names ("Stehlampe Ecke", "Büro")
+    /// into filter words. Numbers, tiny words and common function words are
+    /// dropped so a name like "Hue Go 1" doesn't make "go" an entity.
+    static func vocabularyWords(from names: [String], limit: Int = 500) -> Set<String> {
+        var words = Set<String>()
+        for name in names {
+            let tokens = name.lowercased(with: posix)
+                .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+                .map(String.init)
+            for token in tokens where token.count >= 3 && !token.allSatisfy(\.isNumber)
+                && !vocabularyStopWords.contains(token) {
+                words.insert(token)
+                if words.count >= limit { return words }
+            }
+        }
+        return words
+    }
+
+    private static let vocabularyStopWords: Set<String> = [
+        "der", "die", "das", "und", "von", "mit", "ein", "eine", "ist", "the", "and", "for", "all", "alle",
+    ]
+
     private static func isSeparator(_ character: Character) -> Bool {
         !(character.isLetter || character.isNumber || character == "'" || character == "’")
     }

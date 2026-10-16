@@ -167,6 +167,13 @@ struct HomeEarSettingsView: View {
                 Text("Token stays in Keychain. Use HTTPS or a private VPN address. Assist uses the selected speech language; no paid AI calls.")
                     .font(.caption).foregroundStyle(.secondary)
                 Text(state.haState).font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button("Import room and device names") { state.importHAVocabulary() }
+                    if !state.haWords.isEmpty { Button("Clear") { state.clearHAVocabulary() } }
+                }
+                Toggle("Use imported names in the request filter", isOn: $state.useHAVocabulary)
+                Text("\(state.haVocabularyState). Names are read once (read-only) and cached on this Mac so the filter knows words like \"Lesecke\" or \"Stehlampe\". Refreshed quietly at launch after the first import.")
+                    .font(.caption).foregroundStyle(.secondary)
                 if !state.haResponse.isEmpty {
                     Text(state.haResponse).font(.callout)
                     Button("Read reply (pauses microphone)") { state.speakHAResponse() }
