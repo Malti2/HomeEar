@@ -5,6 +5,7 @@ enum FilterSource: String {
     case wakeWord = "Wake word"
     case proactive = "Proactive filter"
     case followUp = "Follow-up"
+    case shortcut = "Shortcut"
 }
 
 enum FilterDecision {

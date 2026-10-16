@@ -152,13 +152,14 @@ struct StatusRow: View {
 
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, speech, filter, poke, homeAssistant, update
+    case general, speech, filter, shortcuts, poke, homeAssistant, update
     var id: String { rawValue }
     var title: String {
         switch self {
         case .general: "General"
         case .speech: "Speech"
         case .filter: "Request Filter"
+        case .shortcuts: "Shortcuts"
         case .poke: "Poke"
         case .homeAssistant: "Home Assistant"
         case .update: "Update"
@@ -169,6 +170,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .general: "gearshape"
         case .speech: "waveform"
         case .filter: "line.3.horizontal.decrease.circle"
+        case .shortcuts: "bolt"
         case .poke: "paperplane"
         case .homeAssistant: "house"
         case .update: "arrow.triangle.2.circlepath"
@@ -205,6 +207,7 @@ struct HomeEarSettingsView: View {
                 case .general: generalPane
                 case .speech: speechPane
                 case .filter: filterPane
+                case .shortcuts: shortcutsPane
                 case .poke: pokePane
                 case .homeAssistant: homeAssistantPane
                 case .update: updatePane
@@ -323,6 +326,30 @@ struct HomeEarSettingsView: View {
         }
     }
 
+    private var shortcutsPane: some View {
+        Form {
+            Section {
+                ForEach($state.quickPhrases) { $phrase in
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("When I say", text: $phrase.trigger, prompt: Text("Gute Nacht"))
+                        TextField("Send", text: $phrase.text, prompt: Text("Schalte alle Lichter aus"), axis: .vertical)
+                        HStack {
+                            Toggle("Needs \"Hey Poke\"", isOn: $phrase.needsWakeWord)
+                            Spacer()
+                            Button("Remove", role: .destructive) {
+                                state.quickPhrases.removeAll { $0.id == phrase.id }
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                Button("Add shortcut") { state.quickPhrases.append(QuickPhrase()) }
+            } header: { Text("Your shortcuts") } footer: {
+                note("A shortcut runs only when the whole sentence matches, so chatting about \"gute Nacht\" does nothing. Without \"Hey Poke\" it also works from background speech: leave the switch on unless you want that. Shortcuts that touch locks, garage doors or ovens still ask first. Shortcuts are stored on this Mac in your settings, not as heard audio or transcripts.")
+            }
+        }
+    }
+
     private var pokePane: some View {
         Form {
             Section {
@@ -403,6 +430,7 @@ struct HomeEarSettingsView: View {
                     ("settings-general", AnyView(HomeEarSettingsView(state: state, initialPane: .general).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
                     ("settings-speech", AnyView(HomeEarSettingsView(state: state, initialPane: .speech).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
                     ("settings-filter", AnyView(HomeEarSettingsView(state: state, initialPane: .filter).preferredColorScheme(.dark)), NSSize(width: 740, height: 760)),
+                    ("settings-shortcuts", AnyView(HomeEarSettingsView(state: state, initialPane: .shortcuts).preferredColorScheme(.dark)), NSSize(width: 740, height: 420)),
                     ("settings-poke", AnyView(HomeEarSettingsView(state: state, initialPane: .poke).preferredColorScheme(.dark)), NSSize(width: 740, height: 560)),
                     ("settings-assist", AnyView(HomeEarSettingsView(state: state, initialPane: .homeAssistant).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
                     ("settings-update", AnyView(HomeEarSettingsView(state: state, initialPane: .update).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),

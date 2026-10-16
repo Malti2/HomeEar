@@ -53,6 +53,8 @@ struct PendingRequest: Equatable {
         /// Sensitive requests from background speech are never sent, whatever this says.
         var confirmSensitive = true
         var extraSensitive: Set<String> = []
+        /// Personal shortcuts; matched on the whole utterance only.
+        var quickPhrases: [QuickPhrase] = []
     }
 
     private static let posix = Locale(identifier: "en_US_POSIX")
@@ -98,7 +100,14 @@ struct PendingRequest: Equatable {
             return
         }
 
-        // 2. Open windows. Finals only: partials are too unstable to judge.
+        // 2. Personal shortcuts without a wake word. They win over an open follow-up window.
+        if isFinal, !isCapturingOrConfirming,
+           let phrase = QuickPhrases.match(trimmed, wakeWordUsed: false, in: config.quickPhrases) {
+            runShortcut(phrase, audio: audio)
+            return
+        }
+
+        // 3. Open windows. Finals only: partials are too unstable to judge.
         switch mode {
         case .awaitingCommand:
             // Command capture after a lone "Hey Poke": finals go straight
@@ -106,6 +115,8 @@ struct PendingRequest: Equatable {
             if isFinal, isCancel(trimmed) {
                 setMode(.idle)
                 onDecision?("Wake word cancelled")
+            } else if isFinal, let phrase = QuickPhrases.match(trimmed, wakeWordUsed: true, in: config.quickPhrases) {
+                runShortcut(phrase, audio: audio)
             } else if isFinal, isSubstantial(trimmed) {
                 setMode(.idle)
                 learn(audio)
@@ -132,7 +143,7 @@ struct PendingRequest: Equatable {
             break
         }
 
-        // 3. Proactive path.
+        // 4. Proactive path.
         guard isFinal else { return }
         guard config.proactiveEnabled else { return }
         // A leftover "hey poke" (wake word disabled, said out of habit) is
@@ -210,7 +221,9 @@ struct PendingRequest: Equatable {
             }
         } else if isSubstantial(match.commandText) {
             // "Hey Poke, mach das Licht an" — the command is right there.
-            if isFinal {
+            if isFinal, let phrase = QuickPhrases.match(match.commandText, wakeWordUsed: true, in: config.quickPhrases) {
+                runShortcut(phrase, audio: audio)
+            } else if isFinal {
                 setMode(.idle)
                 onDecision?("Wake word: command captured")
                 learn(audio)
@@ -242,6 +255,20 @@ struct PendingRequest: Equatable {
         onDecision?("Follow-up: command captured")
         deliverChecked(text, source: .followUp)
         return true
+    }
+
+    /// "Gute Nacht" → the text the user stored for it. Still goes through the safety gate.
+    private func runShortcut(_ phrase: QuickPhrase, audio: AudioFeatures?) {
+        setMode(.idle)
+        onDecision?("Shortcut: \(phrase.trigger)")
+        deliverChecked(phrase.text, source: .shortcut)
+    }
+
+    private var isCapturingOrConfirming: Bool {
+        switch mode {
+        case .awaitingCommand, .awaitingConfirmation: true
+        case .idle, .followUp: false
+        }
     }
 
     private func ask(_ pending: PendingRequest) {

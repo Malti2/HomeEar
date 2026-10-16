@@ -101,6 +101,15 @@ struct RequestRecord: Identifiable {
     @Published var sensitiveWords = UserDefaults.standard.string(forKey: "sensitiveWords") ?? "" {
         didSet { UserDefaults.standard.set(sensitiveWords, forKey: "sensitiveWords") }
     }
+    @Published var quickPhrases: [QuickPhrase] = {
+        guard let data = UserDefaults.standard.data(forKey: "quickPhrases"),
+              let list = try? JSONDecoder().decode([QuickPhrase].self, from: data) else { return [] }
+        return list
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(quickPhrases) { UserDefaults.standard.set(data, forKey: "quickPhrases") }
+        }
+    }
     @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
         didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
     }
@@ -226,6 +235,7 @@ struct RequestRecord: Identifiable {
         router.config.followUpEnabled = followUpEnabled
         router.config.askWhenUnsure = askWhenUnsure
         router.config.confirmSensitive = confirmSensitive
+        router.config.quickPhrases = quickPhrases
         router.config.extraSensitive = RequestFilter.parseKeywords(sensitiveWords)
         let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
         router.receive(text, isFinal: isFinal, audio: features)
