@@ -89,6 +89,11 @@ struct RequestRecord: Identifiable {
         didSet { UserDefaults.standard.set(useHAVocabulary, forKey: "useHAVocabulary") }
     }
     private var haVocabularyBusy = false
+    @Published var speakReplies = UserDefaults.standard.object(forKey: "speakReplies") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(speakReplies, forKey: "speakReplies") }
+    }
+    private var echoGuard = EchoGuard()
+    private var ttsStateBeforeSpeaking: String?
     @Published var householdNames = UserDefaults.standard.string(forKey: "householdNames") ?? "" {
         didSet { UserDefaults.standard.set(householdNames, forKey: "householdNames") }
     }
@@ -166,7 +171,20 @@ struct RequestRecord: Identifiable {
         microphoneOn = false
         speechState = "Paused"
     }
+    /// Called by VoiceOutput so the microphone input is ignored while we talk.
+    func speechDidBegin() {
+        echoGuard.began(at: ProcessInfo.processInfo.systemUptime)
+        if ttsState != "Speaking" { ttsStateBeforeSpeaking = ttsState }
+        ttsState = "Speaking"
+    }
+    func speechDidEnd() {
+        echoGuard.ended(at: ProcessInfo.processInfo.systemUptime)
+        ttsState = ttsStateBeforeSpeaking ?? "Ready"
+        ttsStateBeforeSpeaking = nil
+    }
     func receive(_ text: String, isFinal: Bool) {
+        // Our own voice coming back through the microphone is not a request.
+        if echoGuard.shouldDrop(at: ProcessInfo.processInfo.systemUptime) { return }
         latestText = text
         router.config.wakeWordEnabled = wakeWordEnabled
         router.config.proactiveEnabled = proactiveEnabled
@@ -208,6 +226,7 @@ struct RequestRecord: Identifiable {
                     haResponse = response.speech
                     haState = response.status
                     latestDecision = "Home Assistant: \(response.status)"
+                    if speakReplies, !response.speech.isEmpty { tts.speak(response.speech) }
                 } catch {
                     // Never retry a command after a timeout: it might have executed.
                     haState = error.localizedDescription
@@ -301,10 +320,9 @@ struct RequestRecord: Identifiable {
     }
     func speakHAResponse() {
         guard !haResponse.isEmpty else { return }
-        // Pause before local TTS so the response cannot trigger the microphone.
-        stop()
+        // No need to pause the microphone: input is ignored while we speak.
         tts.speak(haResponse)
-        latestDecision = "Reading Home Assistant reply; microphone paused"
+        latestDecision = "Reading Home Assistant reply"
     }
     func saveLanguage(_ value: String) {
         language = value

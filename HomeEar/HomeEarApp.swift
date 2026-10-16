@@ -79,7 +79,7 @@ struct PanelView: View {
             }.font(.caption)
             if state.selectedBackend == "home_assistant" && !state.haResponse.isEmpty {
                 Text(state.haResponse).font(.callout).lineLimit(4)
-                Button("Read reply (pauses mic)") { state.speakHAResponse() }
+                Button("Read reply again") { state.speakHAResponse() }
             }
             if !state.recent.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -254,6 +254,11 @@ struct HomeEarSettingsView: View {
                 note("Apple recognition runs on this Mac in fast live mode. Only finalized requests are sent to your selected backend.")
             }
             Section {
+                Toggle("Speak replies aloud", isOn: $state.speakReplies)
+            } header: { Text("Replies") } footer: {
+                note("Home Assistant answers are read aloud. While HomeEar speaks, and for a moment after, microphone input is ignored so it never hears itself. Poke speaks through its own voice tool either way.")
+            }
+            Section {
                 Toggle("Hey Poke wake word", isOn: $state.wakeWordEnabled)
                 Toggle("Proactive requests", isOn: $state.proactiveEnabled)
             } header: { Text("Activation") } footer: {
@@ -345,7 +350,7 @@ struct HomeEarSettingsView: View {
             if !state.haResponse.isEmpty {
                 Section("Last reply") {
                     Text(state.haResponse).font(.callout)
-                    Button("Read reply (pauses microphone)") { state.speakHAResponse() }
+                    Button("Read reply again") { state.speakHAResponse() }
                 }
             }
         }
