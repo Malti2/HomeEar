@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Security
 import ServiceManagement
 import Combine
@@ -48,6 +49,13 @@ enum KeyStore {
     }
 }
 
+struct RequestRecord: Identifiable {
+    let id = UUID()
+    let text: String
+    let source: FilterSource
+    let date: Date
+}
+
 @MainActor final class AppState: ObservableObject {
     @Published var microphoneOn = false
     @Published var speechState = "Not started"
@@ -68,6 +76,97 @@ enum KeyStore {
     @Published var proactiveEnabled = UserDefaults.standard.object(forKey: "proactiveEnabled") as? Bool ?? true {
         didSet { UserDefaults.standard.set(proactiveEnabled, forKey: "proactiveEnabled") }
     }
+    @Published var customKeywords = UserDefaults.standard.string(forKey: "customKeywords") ?? "" {
+        didSet { UserDefaults.standard.set(customKeywords, forKey: "customKeywords") }
+    }
+    @Published var audioCuesEnabled = UserDefaults.standard.object(forKey: "audioCuesEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(audioCuesEnabled, forKey: "audioCuesEnabled") }
+    }
+    let levels = AudioLevelTracker()
+    /// Words from Home Assistant room and device names; cached so the filter works offline.
+    @Published var haWords = Set(UserDefaults.standard.stringArray(forKey: "haVocabularyWords") ?? [])
+    @Published var haVocabularyState = ""
+    @Published var useHAVocabulary = UserDefaults.standard.object(forKey: "useHAVocabulary") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(useHAVocabulary, forKey: "useHAVocabulary") }
+    }
+    private var haVocabularyBusy = false
+    @Published var speakReplies = UserDefaults.standard.object(forKey: "speakReplies") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(speakReplies, forKey: "speakReplies") }
+    }
+    @Published var followUpEnabled = UserDefaults.standard.object(forKey: "followUpEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(followUpEnabled, forKey: "followUpEnabled") }
+    }
+    @Published var confirmSensitive = UserDefaults.standard.object(forKey: "confirmSensitive") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(confirmSensitive, forKey: "confirmSensitive") }
+    }
+    @Published var sensitiveWords = UserDefaults.standard.string(forKey: "sensitiveWords") ?? "" {
+        didSet { UserDefaults.standard.set(sensitiveWords, forKey: "sensitiveWords") }
+    }
+    @Published var quickPhrases: [QuickPhrase] = {
+        guard let data = UserDefaults.standard.data(forKey: "quickPhrases"),
+              let list = try? JSONDecoder().decode([QuickPhrase].self, from: data) else { return [] }
+        return list
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(quickPhrases) { UserDefaults.standard.set(data, forKey: "quickPhrases") }
+        }
+    }
+    /// What HomeEar heard and did this session. Memory only.
+    @Published var activity = ActivityLog()
+    /// Learned corrections, stored as hashes of sentences (see FilterFeedback).
+    @Published var feedback: FilterFeedback = {
+        guard let data = UserDefaults.standard.data(forKey: "filterFeedback"),
+              let value = try? JSONDecoder().decode(FilterFeedback.self, from: data) else { return FilterFeedback() }
+        return value
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(feedback) { UserDefaults.standard.set(data, forKey: "filterFeedback") }
+        }
+    }
+    @Published var playSounds = UserDefaults.standard.bool(forKey: "playSounds") {
+        didSet { UserDefaults.standard.set(playSounds, forKey: "playSounds") }
+    }
+    /// True while the router waits for speech without a wake word (command, follow-up, answer).
+    @Published private(set) var capturing = false
+    /// A result that briefly replaces the steady menu bar icon (sent, error).
+    @Published private(set) var flash: AssistantPhase?
+    private var flashToken = 0
+    /// Our own sounds reach the microphone too; input is ignored until this time.
+    private var soundGuardUntil: TimeInterval = 0
+    var menuBarPhase: AssistantPhase {
+        AssistantPhase.resolve(microphoneOn: microphoneOn, capturing: capturing, flash: flash)
+    }
+    /// Where smart routing sends requests it can't classify.
+    @Published var smartFallback = UserDefaults.standard.string(forKey: "smartFallback") ?? "poke" {
+        didSet { UserDefaults.standard.set(smartFallback, forKey: "smartFallback") }
+    }
+    @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
+    }
+    /// A request the router is unsure about and has asked the user to confirm.
+    @Published var pendingConfirmation: PendingRequest?
+    /// Home Assistant keeps context for follow-ups while the same conversation id is reused.
+    private var haConversationID: String?
+    private var haConversationAt: TimeInterval = 0
+    private var echoGuard = EchoGuard()
+    private var ttsStateBeforeSpeaking: String?
+    @Published var householdNames = UserDefaults.standard.string(forKey: "householdNames") ?? "" {
+        didSet { UserDefaults.standard.set(householdNames, forKey: "householdNames") }
+    }
+    @Published var quietHoursEnabled = UserDefaults.standard.bool(forKey: "quietHoursEnabled") {
+        didSet { UserDefaults.standard.set(quietHoursEnabled, forKey: "quietHoursEnabled"); evaluateQuietHours() }
+    }
+    @Published var quietStart = UserDefaults.standard.object(forKey: "quietStart") as? Int ?? 23 {
+        didSet { UserDefaults.standard.set(quietStart, forKey: "quietStart"); evaluateQuietHours() }
+    }
+    @Published var quietEnd = UserDefaults.standard.object(forKey: "quietEnd") as? Int ?? 7 {
+        didSet { UserDefaults.standard.set(quietEnd, forKey: "quietEnd"); evaluateQuietHours() }
+    }
+    /// Last requests this session, newest first. Memory only, never written to disk.
+    @Published var recent: [RequestRecord] = []
+    private var pausedByQuietHours = false
+    private var wasQuiet = false
+    private var quietTimer: Timer?
     let router = UtteranceRouter()
     @Published var selectedBackend = UserDefaults.standard.string(forKey: "backend") ?? "poke" {
         didSet { UserDefaults.standard.set(selectedBackend, forKey: "backend") }
@@ -86,19 +185,35 @@ enum KeyStore {
     let updates = UpdateChecker()
 
     init() {
+        router.voiceProfile.referenceSNR = UserDefaults.standard.object(forKey: "voiceReferenceSNR") as? Double
+        router.onVoiceReferenceChanged = { UserDefaults.standard.set($0, forKey: "voiceReferenceSNR") }
+        router.onEvent = { [weak self] entry in self?.activity.add(entry) }
+        router.onAskBack = { [weak self] pending in self?.askBack(pending) }
+        router.onPendingChanged = { [weak self] pending in self?.pendingConfirmation = pending }
         router.onDeliver = { [weak self] text, source in self?.forwardRequest(text: text, source: source) }
         router.onDecision = { [weak self] decision in self?.latestDecision = decision }
         router.onCommandModeChanged = { [weak self] active in
             guard let self else { return }
+            self.capturing = active
             self.speechState = active ? "Listening for command…" : (self.microphoneOn ? "Listening on device" : "Paused")
+            if active { self.play(.heard) }
         }
+        // Launching inside a quiet window must not pause a mic the user starts by hand.
+        wasQuiet = quietHoursEnabled && QuietHours(startHour: quietStart, endHour: quietEnd).contains(Date())
+        quietTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.evaluateQuietHours() }
+        }
+        haVocabularyState = haWords.isEmpty ? "Not imported" : "\(haWords.count) words imported"
+        // Refresh quietly at launch, but only after the user imported once.
+        if !haWords.isEmpty { importHAVocabulary(silent: true) }
         Task { @MainActor in
-            do { try mcp.start(); if completedSetup && selectedBackend == "poke" { tunnel.start() } }
+            do { try mcp.start(); if completedSetup && selectedBackend != "home_assistant" { tunnel.start() } }
             catch { ttsState = "Local tool unavailable: \(error.localizedDescription)" }
         }
     }
     func start() {
         guard !microphoneOn else { return }
+        pausedByQuietHours = false
         Task {
             do {
                 try await speech.start(language: language)
@@ -111,22 +226,87 @@ enum KeyStore {
         }
     }
     func stop() {
+        pausedByQuietHours = false
         speech.stop()
         router.reset()
         microphoneOn = false
         speechState = "Paused"
     }
+    /// Called by VoiceOutput so the microphone input is ignored while we talk.
+    func speechDidBegin() {
+        echoGuard.began(at: ProcessInfo.processInfo.systemUptime)
+        if ttsState != "Speaking" { ttsStateBeforeSpeaking = ttsState }
+        ttsState = "Speaking"
+    }
+    func speechDidEnd(expectsAnswer: Bool) {
+        echoGuard.ended(at: ProcessInfo.processInfo.systemUptime)
+        ttsState = ttsStateBeforeSpeaking ?? "Ready"
+        ttsStateBeforeSpeaking = nil
+        // The reply is out; the next few seconds may hold an answer or a follow-up.
+        if microphoneOn { router.openFollowUp(expectsAnswer: expectsAnswer) }
+    }
+    /// Briefly shows a result in the menu bar icon, then goes back to the steady state.
+    private func showFlash(_ phase: AssistantPhase, for seconds: TimeInterval) {
+        flashToken += 1
+        let token = flashToken
+        flash = phase
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            if flashToken == token { flash = nil }
+        }
+    }
+    private func play(_ cue: SoundCue) {
+        guard playSounds, let sound = NSSound(named: NSSound.Name(cue.systemSoundName)) else { return }
+        soundGuardUntil = ProcessInfo.processInfo.systemUptime + 1.0
+        sound.play()
+    }
+    private func reportFailure() {
+        showFlash(.error, for: 4)
+        play(.error)
+    }
+    private func askBack(_ pending: PendingRequest) {
+        guard speakReplies else { return }
+        let german = language.hasPrefix("de")
+        let prompt = pending.sensitive
+            ? (german ? "Soll ich das wirklich tun: \(pending.text)?" : "Do you really want me to: \(pending.text)?")
+            : (german ? "Meintest du: \(pending.text)?" : "Did you mean: \(pending.text)?")
+        tts.speak(prompt, expectsAnswer: true)
+    }
     func receive(_ text: String, isFinal: Bool) {
+        // Our own voice or sounds coming back through the microphone are not a request.
+        let now = ProcessInfo.processInfo.systemUptime
+        if echoGuard.shouldDrop(at: now) || now < soundGuardUntil { return }
         latestText = text
         router.config.wakeWordEnabled = wakeWordEnabled
         router.config.proactiveEnabled = proactiveEnabled
         router.config.strictFilter = strictFilter
-        router.receive(text, isFinal: isFinal)
+        var extra = RequestFilter.parseKeywords(customKeywords)
+        if useHAVocabulary { extra.formUnion(haWords) }
+        router.config.extraEntities = extra
+        router.config.addressees = RequestFilter.parseKeywords(householdNames)
+        router.config.audioCuesEnabled = audioCuesEnabled
+        router.config.followUpEnabled = followUpEnabled
+        router.config.askWhenUnsure = askWhenUnsure
+        router.config.confirmSensitive = confirmSensitive
+        router.config.quickPhrases = quickPhrases
+        router.config.feedback = feedback
+        router.config.extraSensitive = RequestFilter.parseKeywords(sensitiveWords)
+        let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
+        router.receive(text, isFinal: isFinal, audio: features)
     }
     private func forwardRequest(text: String, source: FilterSource) {
         // Capture the selected destination before suspension: one request, one backend.
-        let destination = selectedBackend
+        let (destination, routeReason) = resolveDestination(for: text)
         guard completedSetup || destination == "home_assistant" else { return }
+        activity.add(ActivityEntry(date: Date(), text: text, outcome: .sent,
+                                   reason: "Sent to \(destination == "poke" ? "Poke" : "Home Assistant")"
+                                       + (routeReason.map { " (smart routing: \($0))" } ?? ""),
+                                   source: source))
+        showFlash(.sent, for: 1.5)
+        play(.sent)
+        recent.removeAll { $0.text == text }
+        recent.insert(RequestRecord(text: text, source: source, date: Date()), at: 0)
+        if recent.count > 5 { recent.removeLast(recent.count - 5) }
         if destination == "home_assistant" {
             guard !haRequestInFlight else {
                 latestDecision = "Request not sent: Home Assistant is still processing the previous request"
@@ -145,14 +325,24 @@ enum KeyStore {
                 defer { haRequestInFlight = false }
                 do {
                     let client = try HomeAssistantClient(server: server, token: token)
-                    let response = try await client.process(text, language: locale)
+                    let now = ProcessInfo.processInfo.systemUptime
+                    let conversation = now - haConversationAt < 45 ? haConversationID : nil
+                    let response = try await client.process(text, language: locale, conversationID: conversation)
+                    haConversationID = response.conversationID
+                    haConversationAt = ProcessInfo.processInfo.systemUptime
                     haResponse = response.speech
                     haState = response.status
                     latestDecision = "Home Assistant: \(response.status)"
+                    if speakReplies, !response.speech.isEmpty {
+                        tts.speak(response.speech, expectsAnswer: response.expectsFollowUp)
+                    } else if response.expectsFollowUp, microphoneOn {
+                        router.openFollowUp(expectsAnswer: true)
+                    }
                 } catch {
                     // Never retry a command after a timeout: it might have executed.
                     haState = error.localizedDescription
                     latestDecision = "Home Assistant: result unconfirmed; no retry"
+                    reportFailure()
                 }
             }
         } else {
@@ -162,8 +352,65 @@ enum KeyStore {
                     try await PokeBackend().send(text)
                     apiState = "Delivered to Poke"
                     latestDecision = "\(source.rawValue) → sent to Poke"
-                } catch { apiState = "Forwarding unavailable: \(error.localizedDescription)" }
+                } catch {
+                    apiState = "Forwarding unavailable: \(error.localizedDescription)"
+                    reportFailure()
+                }
             }
+        }
+    }
+    /// The backend for one request. With smart routing each request is classified on its own
+    /// and still goes to exactly one backend: no fallback, no retry on the other one.
+    private func resolveDestination(for text: String) -> (backend: String, reason: String?) {
+        guard selectedBackend == "smart" else { return (selectedBackend, nil) }
+        var deviceWords = RequestFilter.parseKeywords(customKeywords)
+        if useHAVocabulary { deviceWords.formUnion(haWords) }
+        let decision = IntentRouter.route(text, extraDeviceWords: deviceWords,
+                                          fallback: smartFallback == "home_assistant" ? .homeAssistant : .poke)
+        return (decision.backend.rawValue, decision.reason)
+    }
+    var backendTitle: String {
+        switch selectedBackend {
+        case "poke": "Poke"
+        case "smart": "Smart routing"
+        default: "Home Assistant"
+        }
+    }
+    var backendStatus: String {
+        switch selectedBackend {
+        case "poke": apiState
+        case "smart": "Devices → Home Assistant, rest → \(smartFallback == "home_assistant" ? "Home Assistant" : "Poke")"
+        default: haState
+        }
+    }
+    /// Activity list: the filter held this back, but the user wants it sent. Remembered for that exact sentence.
+    func sendAnyway(_ entry: ActivityEntry) {
+        if SensitiveActions.match(in: entry.text, extra: RequestFilter.parseKeywords(sensitiveWords)) == nil {
+            feedback.record(.send, for: entry.text)
+        }
+        router.sendManually(entry.text)
+    }
+    /// Activity list: this was sent but should not have been. The exact sentence is ignored from now on.
+    func markNotACommand(_ entry: ActivityEntry) {
+        feedback.record(.ignore, for: entry.text)
+    }
+    func clearActivity() { activity.clear() }
+    func clearFeedback() { feedback.removeAll() }
+    /// Sends a previous request again on the currently selected backend.
+    func resend(_ record: RequestRecord) {
+        forwardRequest(text: record.text, source: record.source)
+    }
+    /// Pauses the microphone when a quiet window begins and resumes it when
+    /// the window ends, but only if quiet hours did the pausing.
+    func evaluateQuietHours(now: Date = Date()) {
+        let quiet = quietHoursEnabled && QuietHours(startHour: quietStart, endHour: quietEnd).contains(now)
+        defer { wasQuiet = quiet }
+        if quiet && !wasQuiet && microphoneOn {
+            stop()
+            pausedByQuietHours = true
+            speechState = "Paused for quiet hours"
+        } else if !quiet && wasQuiet && pausedByQuietHours {
+            start()
         }
     }
     func saveHAToken(_ token: String) -> Bool {
@@ -191,12 +438,43 @@ enum KeyStore {
             } catch { haState = error.localizedDescription }
         }
     }
+    /// Reads room and device names from Home Assistant so the filter recognises
+    /// requests that use your own names ("mach die Lesecke an").
+    func importHAVocabulary(silent: Bool = false) {
+        guard !haVocabularyBusy else { return }
+        guard let token = HATokenStore.load(), !token.isEmpty else {
+            if !silent { haVocabularyState = "Save a token first" }
+            return
+        }
+        let server = haURL
+        haVocabularyBusy = true
+        if !silent { haVocabularyState = "Importing..." }
+        Task {
+            defer { haVocabularyBusy = false }
+            do {
+                let client = try HomeAssistantClient(server: server, token: token)
+                let names = try await client.fetchVocabulary()
+                let words = RequestFilter.vocabularyWords(from: names)
+                haWords = words
+                UserDefaults.standard.set(words.sorted(), forKey: "haVocabularyWords")
+                haVocabularyState = "\(words.count) words from \(names.count) rooms and devices"
+            } catch HomeAssistantClient.Failure.resultUnconfirmed {
+                if !silent { haVocabularyState = "Could not reach Home Assistant." }
+            } catch {
+                if !silent { haVocabularyState = error.localizedDescription }
+            }
+        }
+    }
+    func clearHAVocabulary() {
+        haWords = []
+        UserDefaults.standard.removeObject(forKey: "haVocabularyWords")
+        haVocabularyState = "Not imported"
+    }
     func speakHAResponse() {
         guard !haResponse.isEmpty else { return }
-        // Pause before local TTS so the response cannot trigger the microphone.
-        stop()
+        // No need to pause the microphone: input is ignored while we speak.
         tts.speak(haResponse)
-        latestDecision = "Reading Home Assistant reply; microphone paused"
+        latestDecision = "Reading Home Assistant reply"
     }
     func saveLanguage(_ value: String) {
         language = value
@@ -239,6 +517,10 @@ enum HATokenStore {
 struct HAReply: Sendable {
     let status: String
     let speech: String
+    /// Reuse this id on the next request to keep context ("und im Flur auch").
+    var conversationID: String?
+    /// Home Assistant (or the wording of the reply) expects an answer.
+    var expectsFollowUp = false
 }
 
 /// Refuse redirects so an authenticated request never migrates to another host.
@@ -309,14 +591,30 @@ struct HomeAssistantClient: Sendable {
         guard (200..<300).contains(http.statusCode) else { throw Failure.status(http.statusCode) }
         return data
     }
+    /// Room names and the names of controllable devices, for the request filter.
+    /// A read-only template call; nothing in Home Assistant is changed.
+    func fetchVocabulary() async throws -> [String] {
+        let body = try JSONSerialization.data(withJSONObject: ["template": Self.vocabularyTemplate])
+        let data = try await perform(request(path: "api/template", method: "POST", body: body))
+        return try Self.parseVocabulary(data)
+    }
+    private static let vocabularyTemplate = #"{{ {"areas": areas() | map("area_name") | list, "names": states | selectattr("domain", "in", ["light","switch","cover","climate","fan","media_player","scene","script","lock","vacuum","humidifier","input_boolean"]) | map(attribute="name") | list} | tojson }}"#
+    static func parseVocabulary(_ data: Data) throws -> [String] {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { throw Failure.malformed }
+        let areas = object["areas"] as? [String] ?? []
+        let names = object["names"] as? [String] ?? []
+        guard !(areas.isEmpty && names.isEmpty) else { throw Failure.malformed }
+        return areas + names
+    }
     func testConnection() async throws {
         let data = try await perform(request(path: "api/"))
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               object["message"] as? String == "API running." else { throw Failure.malformed }
     }
-    func process(_ text: String, language: String) async throws -> HAReply {
-        let body = try JSONSerialization.data(withJSONObject: ["text": text, "language": language,
-                                                                "agent_id": "home_assistant"])
+    func process(_ text: String, language: String, conversationID: String? = nil) async throws -> HAReply {
+        var payload: [String: Any] = ["text": text, "language": language, "agent_id": "home_assistant"]
+        if let conversationID { payload["conversation_id"] = conversationID }
+        let body = try JSONSerialization.data(withJSONObject: payload)
         let data = try await perform(request(path: "api/conversation/process", method: "POST", body: body))
         return try Self.parseReply(data)
     }
@@ -326,14 +624,20 @@ struct HomeAssistantClient: Sendable {
               let type = response["response_type"] as? String else { throw Failure.malformed }
         let speech = ((response["speech"] as? [String: Any])?["plain"] as? [String: Any])?["speech"] as? String ?? ""
         let details = response["data"] as? [String: Any] ?? [:]
+        let expects = object["continue_conversation"] as? Bool
+            ?? speech.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?")
+        func reply(_ status: String) -> HAReply {
+            HAReply(status: status, speech: speech, conversationID: object["conversation_id"] as? String,
+                    expectsFollowUp: expects)
+        }
         switch type {
         case "action_done":
             let failures = details["failed"] as? [[String: Any]] ?? []
             let successes = details["success"] as? [[String: Any]] ?? []
             guard !successes.isEmpty || !failures.isEmpty else { throw Failure.malformed }
-            return HAReply(status: failures.isEmpty ? "Action completed" : "Some targets failed; check Home Assistant", speech: speech)
-        case "query_answer": return HAReply(status: "Answer received", speech: speech)
-        case "error": return HAReply(status: "Not completed: " + (details["code"] as? String ?? "unknown"), speech: speech)
+            return reply(failures.isEmpty ? "Action completed" : "Some targets failed; check Home Assistant")
+        case "query_answer": return reply("Answer received")
+        case "error": return reply("Not completed: " + (details["code"] as? String ?? "unknown"))
         default: throw Failure.malformed
         }
     }

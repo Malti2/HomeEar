@@ -1,7 +1,7 @@
 name: Build HomeEar
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
   workflow_dispatch:
 jobs:
   build:
@@ -66,8 +66,15 @@ jobs:
           mkdir -p dist/dmg-root
           ditto "$APP" dist/dmg-root/HomeEar.app
           ln -s /Applications dist/dmg-root/Applications
-          hdiutil create -volname HomeEar -srcfolder dist/dmg-root -ov -format UDZO dist/HomeEar.dmg
-          hdiutil verify dist/HomeEar.dmg
+          # hdiutil sometimes reports "Resource temporarily unavailable" right after create on
+          # fresh runners. Retry create+verify; a real corruption still fails all three attempts.
+          for ATTEMPT in 1 2 3; do
+            if hdiutil create -volname HomeEar -srcfolder dist/dmg-root -ov -format UDZO dist/HomeEar.dmg && hdiutil verify dist/HomeEar.dmg; then
+              break
+            fi
+            test "$ATTEMPT" -lt 3 || { echo 'DMG creation failed after 3 attempts'; exit 1; }
+            sleep 5
+          done
           ditto -c -k --sequesterRsrc --keepParent "$APP" dist/HomeEar.zip
           mkdir -p dist/zip-check
           ditto -x -k dist/HomeEar.zip dist/zip-check
@@ -125,7 +132,7 @@ jobs:
           wait "$PID"
           cat ui-capture.log
           grep -q HOME_EAR_UI_CAPTURE_SUCCEEDED ui-capture.log
-          for NAME in panel settings settings-lower onboarding setup-step-2 setup-step-3 setup-step-4 panel-assist setup-assist settings-beta settings-beta-lower; do
+          for NAME in panel settings-general settings-speech settings-filter settings-shortcuts settings-activity settings-poke settings-assist settings-update settings-update-beta onboarding setup-step-2 setup-step-3 setup-step-4 panel-assist setup-assist; do
             test -s "ui-capture/HomeEar-$NAME.png"
             sips -g pixelWidth -g pixelHeight "ui-capture/HomeEar-$NAME.png"
             echo "SCREENSHOT_${NAME}_BASE64_BEGIN"

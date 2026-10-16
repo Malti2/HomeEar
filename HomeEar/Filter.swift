@@ -4,10 +4,14 @@ import Foundation
 enum FilterSource: String {
     case wakeWord = "Wake word"
     case proactive = "Proactive filter"
+    case followUp = "Follow-up"
+    case shortcut = "Shortcut"
 }
 
 enum FilterDecision {
     case accept(source: FilterSource, reason: String)
+    /// One point short and command-shaped: worth asking about instead of guessing.
+    case uncertain(reason: String)
     case reject(reason: String)
 }
 
@@ -19,18 +23,31 @@ enum FilterDecision {
 ///   +2  verb within the first three tokens ("bitte mach das Licht an")
 ///   +2  mentions a smart-home entity        ("… das Licht …")
 ///   +2  polite request pattern              ("kannst du …", "please …")
+///   +2  infinitive command, no imperative   ("das Licht bitte anmachen")
 ///   +1  question about a known entity       ("wie wird das Wetter?")
+///   −2  starts with a subject pronoun       ("er will das Licht anmachen"),
+///       unless a polite framing is present  ("ich möchte …")
+///   −2  starts a subordinate clause         ("wenn du das Licht anmachst …")
+///   −2  past-tense marker                   ("hat das Licht angemacht")
+///   −2  sounds far from the microphone     (TV, radio, another room)
+///   −4  addressed to a person               ("Mama, mach das Licht aus"),
+///       built-in family words plus the household names the user adds
 ///   −3  laughter / non-speech tokens
 ///
 /// Strict mode needs 4 points, relaxed 3. Length gates stay: 12–400 chars,
 /// at least 3 words. Verb matching is token-exact on purpose: "mach" scores,
 /// "macht" ("er macht das Licht an" — talking *about* someone) does not.
+/// Entities are matched per token: exactly, or as the tail of a German
+/// compound ("wohnzimmerlampe" → "lampe"). Short entities ("raum", "tür")
+/// never match inside longer words, otherwise "natürlich" or "traum" would
+/// look like smart-home talk. Users can add their own entities (`extra`).
 /// A leading wake phrase is stripped before scoring so "Hey Poke, mach …"
 /// is judged on the command itself.
 struct RequestFilter {
     private static let posix = Locale(identifier: "en_US_POSIX")
 
-    static func checkProactive(_ text: String, strict: Bool) -> FilterDecision {
+    static func checkProactive(_ text: String, strict: Bool, extra: Set<String> = [],
+                               addressees: Set<String> = [], audio: AudioCue = .normal) -> FilterDecision {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let words = value.split(whereSeparator: \.isWhitespace)
         guard value.count >= 12, words.count >= 3, value.count <= 400 else {
@@ -38,7 +55,8 @@ struct RequestFilter {
         }
         let command = WakeWordDetector.stripLeadingWakeWord(from: value) ?? value
         let lower = command.lowercased(with: posix)
-        let tokens = lower.split(whereSeparator: \.isWhitespace).map(String.init)
+        // Punctuation splits tokens ("licht, bitte"); apostrophes stay ("what's").
+        let tokens = lower.split(whereSeparator: isSeparator).map(String.init)
 
         var score = 0
         var hits: [String] = []
@@ -47,19 +65,131 @@ struct RequestFilter {
         } else if tokens.prefix(3).contains(where: { verbs.contains($0) }) {
             score += 2; hits.append("verb")
         }
-        if entities.contains(where: { lower.contains($0) }) { score += 2; hits.append("entity") }
-        if polite.contains(where: { lower.contains($0) }) { score += 2; hits.append("polite") }
-        if questionStarts.contains(where: { lower.hasPrefix($0) }),
-           entities.contains(where: { lower.contains($0) }) {
+        let hasEntity = mentionsEntity(tokens, extra: extra)
+        let isPolite = polite.contains(where: { lower.contains($0) })
+        if !hits.contains("verb"), mentionsInfinitive(tokens) {
+            score += 2; hits.append("infinitive")
+        }
+        if hasEntity { score += 2; hits.append("entity") }
+        if isPolite { score += 2; hits.append("polite") }
+        if hasEntity, questionStarts.contains(where: { lower.hasPrefix($0) }) {
             score += 1; hits.append("question")
         }
+        if !isPolite, let first = tokens.first, subjects.contains(first) { score -= 2 }
+        if let first = tokens.first, subordinators.contains(first) { score -= 2 }
+        if tokens.contains(where: { pastMarkers.contains($0) }) { score -= 2 }
+        if let first = tokens.first, let last = tokens.last,
+           [first, last].contains(where: { vocatives.contains($0) || addressees.contains($0) }) {
+            score -= 4
+        }
         if tokens.contains(where: { anti.contains($0) }) { score -= 3 }
+        // Audio only ever lowers the score: loud speech alone is no reason to forward.
+        if audio == .far { score -= 2 }
 
         let threshold = strict ? 4 : 3
         if score >= threshold {
             return .accept(source: .proactive, reason: "Score \(score) (\(hits.joined(separator: "+")))")
         }
-        return .reject(reason: "Background speech filtered (score \(score))")
+        let commandShaped = hits.contains { ["verb", "infinitive", "polite", "question"].contains($0) }
+        if score == threshold - 1, hits.contains("entity"), commandShaped {
+            return .uncertain(reason: "Score \(score) (\(hits.joined(separator: "+")))\(audio == .far ? ", sounded distant" : "")")
+        }
+        return .reject(reason: "Background speech filtered (score \(score)\(audio == .far ? ", sounded distant" : ""))")
+    }
+
+    /// Short utterance right after a spoken reply that reads like a continuation
+    /// ("und im Flur auch", "mach es heller") rather than background talk.
+    static func looksLikeFollowUp(_ text: String, extra: Set<String> = []) -> Bool {
+        let tokens = text.lowercased(with: posix).split(whereSeparator: isSeparator).map(String.init)
+        guard !tokens.isEmpty, tokens.count <= 8 else { return false }
+        if let first = tokens.first, subjects.contains(first) { return false }
+        if tokens.contains(where: { pastMarkers.contains($0) }) { return false }
+        if let first = tokens.first, connectors.contains(first) { return true }
+        let hasEntity = mentionsEntity(tokens, extra: extra)
+        if tokens.prefix(3).contains(where: { verbs.contains($0) }) { return true }
+        // "machen" alone is everyday talk; an infinitive only counts next to a device or room.
+        if hasEntity, mentionsInfinitive(tokens) { return true }
+        // A bare room or device name ("im Flur") is fine, a whole sentence about one is not.
+        return tokens.count <= 4 && hasEntity
+    }
+
+    /// The first personal-assistant topic in `text` (weather, calendar, reminders, timers, time).
+    /// Smart routing sends these to the assistant backend, not to the smart home.
+    static func assistantTopic(in text: String) -> String? {
+        let tokens = text.lowercased(with: posix).split(whereSeparator: isSeparator).map(String.init)
+        return tokens.first { assistantTopics.contains($0) }
+    }
+
+    /// The first smart-home word in `text` (device, room, your own and imported words),
+    /// leaving out assistant topics that merely share the entity list.
+    static func deviceWord(in text: String, extra: Set<String> = []) -> String? {
+        let tokens = text.lowercased(with: posix).split(whereSeparator: isSeparator).map(String.init)
+        return tokens.first { token in
+            !assistantTopics.contains(token) && mentionsEntity([token], extra: extra)
+        }
+    }
+
+    private static let assistantTopics: Set<String> = [
+        "wetter", "weather", "regen", "sonne", "kalender", "calendar", "termin", "termine",
+        "appointment", "erinnerung", "reminder", "remind", "erinner", "erinnere",
+        "wecker", "timer", "alarm", "uhr", "spät",
+    ]
+
+    private static let connectors: Set<String> = [
+        "und", "auch", "noch", "dann", "aber", "außerdem", "and", "also", "then", "now",
+    ]
+
+    /// Splits a user-entered keyword list ("ventilator, kamin garage") into
+    /// lowercase single tokens.
+    static func parseKeywords(_ text: String) -> Set<String> {
+        Set(text.lowercased(with: posix)
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
+            .map(String.init)
+            .filter { $0.count >= 2 })
+    }
+
+    /// Infinitive command, also when the transcriber splits the particle off
+    /// ("an machen" instead of "anmachen").
+    private static func mentionsInfinitive(_ tokens: [String]) -> Bool {
+        if tokens.contains(where: { infinitives.contains($0) }) { return true }
+        return zip(tokens, tokens.dropFirst()).contains { infinitives.contains($0 + $1) }
+    }
+
+    /// Turns Home Assistant device and room names ("Stehlampe Ecke", "Büro")
+    /// into filter words. Numbers, tiny words and common function words are
+    /// dropped so a name like "Hue Go 1" doesn't make "go" an entity.
+    static func vocabularyWords(from names: [String], limit: Int = 500) -> Set<String> {
+        var words = Set<String>()
+        for name in names {
+            let tokens = name.lowercased(with: posix)
+                .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+                .map(String.init)
+            for token in tokens where token.count >= 3 && !token.allSatisfy(\.isNumber)
+                && !vocabularyStopWords.contains(token) {
+                words.insert(token)
+                if words.count >= limit { return words }
+            }
+        }
+        return words
+    }
+
+    private static let vocabularyStopWords: Set<String> = [
+        "der", "die", "das", "und", "von", "mit", "ein", "eine", "ist", "the", "and", "for", "all", "alle",
+    ]
+
+    private static func isSeparator(_ character: Character) -> Bool {
+        !(character.isLetter || character.isNumber || character == "'" || character == "’")
+    }
+
+    private static func mentionsEntity(_ tokens: [String], extra: Set<String>) -> Bool {
+        tokens.contains { token in
+            if entities.contains(token) || extra.contains(token) { return true }
+            // Compound tail, only for words long enough to be unambiguous.
+            func tail(_ word: String) -> Bool {
+                word.count >= 5 && token.count > word.count && token.hasSuffix(word)
+            }
+            return entities.contains(where: tail) || extra.contains(where: tail)
+        }
     }
 
     // MARK: - lexicons
@@ -73,9 +203,46 @@ struct RequestFilter {
         "dreh", "drehe", "erhöh", "erhöhe", "senk", "senke",
         "aktivier", "aktiviere", "deaktivier", "deaktiviere",
         "fahr", "fahre", "leg", "lege", "lies", "sag", "sage",
-        "erzähl", "erzähle", "weck",
+        "erzähl", "erzähle", "weck", "lösch", "lösche", "wechsel", "wechsle",
+        "pausier", "pausiere", "verdunkel", "verdunkle", "heiz", "heize",
+        "kühl", "kühle",
         "turn", "switch", "set", "dim", "open", "close",
         "play", "lock", "unlock", "raise", "lower", "remind",
+        "stop", "pause", "increase", "decrease", "activate", "deactivate", "show",
+    ]
+
+    /// Infinitive commands ("das Licht bitte anmachen"), common in spoken German.
+    private static let infinitives: Set<String> = [
+        "anmachen", "ausmachen", "einschalten", "ausschalten", "anschalten",
+        "abschalten", "aufmachen", "zumachen", "öffnen", "schließen",
+        "dimmen", "starten", "stoppen", "pausieren", "abspielen",
+        "hochfahren", "runterfahren", "herunterfahren", "aufdrehen",
+        "runterdrehen", "herunterdrehen", "ausstellen", "anstellen",
+        "stellen", "einstellen", "erhöhen", "senken", "reduzieren", "machen",
+    ]
+
+    /// Clause openers: the sentence is *about* an action, not a request.
+    private static let subordinators: Set<String> = [
+        "wenn", "dass", "weil", "ob", "obwohl", "damit", "falls",
+        "if", "because", "although",
+    ]
+
+    /// Auxiliaries that put the action in the past ("hat das Licht angemacht").
+    private static let pastMarkers: Set<String> = [
+        "hat", "hast", "habe", "hatte", "war", "waren", "wurde", "wurden",
+        "had", "were", "did", "has",
+    ]
+
+    /// Family words and pet names: at the start or end they mean the request
+    /// is for someone in the room, not for HomeEar.
+    private static let vocatives: Set<String> = [
+        "schatz", "schatzi", "liebling", "mama", "mami", "mutti", "papa", "papi",
+        "oma", "opa", "honey", "babe", "mom", "mum", "dad", "darling",
+    ]
+
+    /// Sentence-initial subjects that usually mean "talking about", not "asking".
+    private static let subjects: Set<String> = [
+        "er", "sie", "es", "wir", "ihr", "ich", "he", "she", "they", "we", "i",
     ]
 
     /// Smart-home and everyday entities that make an utterance command-like.
@@ -94,6 +261,10 @@ struct RequestFilter {
         "scene", "music", "volume", "weather", "calendar", "appointment",
         "reminder", "alarm", "door", "window", "warmer", "cooler",
         "brighter", "dimmer",
+        "badezimmer", "garage", "garagentor", "rollo", "rollos", "rolladen",
+        "ventilator", "kamin", "klimaanlage", "lüftung", "radio", "lautsprecher",
+        "alarmanlage", "heizkörper", "stehlampe", "balkon", "terrasse", "keller",
+        "fan", "speaker", "doorbell",
     ]
 
     /// Polite request framings.

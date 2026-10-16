@@ -92,7 +92,7 @@ import Network
             let parameters = request["params"] as? [String: Any]
             let args = parameters?["arguments"] as? [String: Any]
             if parameters?["name"] as? String == "speak", let text = args?["text"] as? String, !text.isEmpty, text.count <= 1000 {
-                state?.tts.speak(text)
+                state?.tts.speak(text, expectsAnswer: text.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?"))
                 result = ["content": [["type": "text", "text": "Speaking on this Mac."]]]
             } else {
                 send(["jsonrpc": "2.0", "id": id, "error": ["code": -32602, "message": "Invalid speech request"]], on: connection); return
