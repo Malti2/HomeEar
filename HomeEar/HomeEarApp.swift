@@ -85,12 +85,12 @@ struct PanelView: View {
                 }
                 Divider()
                 HStack(alignment: .top) {
-                    Text(state.selectedBackend == "poke" ? "Poke" : "Home Assistant").foregroundStyle(.secondary)
+                    Text(state.backendTitle).foregroundStyle(.secondary)
                     Spacer()
-                    Text(state.selectedBackend == "poke" ? state.apiState : state.haState).multilineTextAlignment(.trailing).lineLimit(2)
+                    Text(state.backendStatus).multilineTextAlignment(.trailing).lineLimit(2)
                 }
             }.font(.caption)
-            if state.selectedBackend == "home_assistant" && !state.haResponse.isEmpty {
+            if state.selectedBackend != "poke" && !state.haResponse.isEmpty {
                 Text(state.haResponse).font(.callout).lineLimit(4)
                 Button("Read reply again") { state.speakHAResponse() }
             }
@@ -235,9 +235,18 @@ struct HomeEarSettingsView: View {
                 Picker("Send requests to", selection: $state.selectedBackend) {
                     Text("Poke").tag("poke")
                     Text("Home Assistant").tag("home_assistant")
+                    Text("Smart").tag("smart")
                 }.pickerStyle(.segmented)
+                if state.selectedBackend == "smart" {
+                    Picker("When unclear", selection: $state.smartFallback) {
+                        Text("Poke").tag("poke")
+                        Text("Home Assistant").tag("home_assistant")
+                    }
+                }
             } header: { Text("Destination") } footer: {
-                note("Only the selected backend receives your requests. There is no automatic fallback.")
+                note(state.selectedBackend == "smart"
+                     ? "Smart routing sends device commands (lights, heating, covers, rooms and your imported names) to Home Assistant, and questions, reminders, timers, calendar and weather to Poke. Each request still goes to exactly one backend, with no fallback or retry on the other. The Activity list shows where each one went."
+                     : "Only the selected backend receives your requests. There is no automatic fallback.")
             }
             Section("Startup") {
                 Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))

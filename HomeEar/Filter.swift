@@ -113,6 +113,28 @@ struct RequestFilter {
         return tokens.count <= 4 && hasEntity
     }
 
+    /// The first personal-assistant topic in `text` (weather, calendar, reminders, timers, time).
+    /// Smart routing sends these to the assistant backend, not to the smart home.
+    static func assistantTopic(in text: String) -> String? {
+        let tokens = text.lowercased(with: posix).split(whereSeparator: isSeparator).map(String.init)
+        return tokens.first { assistantTopics.contains($0) }
+    }
+
+    /// The first smart-home word in `text` (device, room, your own and imported words),
+    /// leaving out assistant topics that merely share the entity list.
+    static func deviceWord(in text: String, extra: Set<String> = []) -> String? {
+        let tokens = text.lowercased(with: posix).split(whereSeparator: isSeparator).map(String.init)
+        return tokens.first { token in
+            !assistantTopics.contains(token) && mentionsEntity([token], extra: extra)
+        }
+    }
+
+    private static let assistantTopics: Set<String> = [
+        "wetter", "weather", "regen", "sonne", "kalender", "calendar", "termin", "termine",
+        "appointment", "erinnerung", "reminder", "remind", "erinner", "erinnere",
+        "wecker", "timer", "alarm", "uhr", "spät",
+    ]
+
     private static let connectors: Set<String> = [
         "und", "auch", "noch", "dann", "aber", "außerdem", "and", "also", "then", "now",
     ]

@@ -136,6 +136,10 @@ struct RequestRecord: Identifiable {
     var menuBarPhase: AssistantPhase {
         AssistantPhase.resolve(microphoneOn: microphoneOn, capturing: capturing, flash: flash)
     }
+    /// Where smart routing sends requests it can't classify.
+    @Published var smartFallback = UserDefaults.standard.string(forKey: "smartFallback") ?? "poke" {
+        didSet { UserDefaults.standard.set(smartFallback, forKey: "smartFallback") }
+    }
     @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
         didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
     }
@@ -203,7 +207,7 @@ struct RequestRecord: Identifiable {
         // Refresh quietly at launch, but only after the user imported once.
         if !haWords.isEmpty { importHAVocabulary(silent: true) }
         Task { @MainActor in
-            do { try mcp.start(); if completedSetup && selectedBackend == "poke" { tunnel.start() } }
+            do { try mcp.start(); if completedSetup && selectedBackend != "home_assistant" { tunnel.start() } }
             catch { ttsState = "Local tool unavailable: \(error.localizedDescription)" }
         }
     }
@@ -292,10 +296,12 @@ struct RequestRecord: Identifiable {
     }
     private func forwardRequest(text: String, source: FilterSource) {
         // Capture the selected destination before suspension: one request, one backend.
-        let destination = selectedBackend
+        let (destination, routeReason) = resolveDestination(for: text)
         guard completedSetup || destination == "home_assistant" else { return }
         activity.add(ActivityEntry(date: Date(), text: text, outcome: .sent,
-                                   reason: "Sent to \(destination == "poke" ? "Poke" : "Home Assistant")", source: source))
+                                   reason: "Sent to \(destination == "poke" ? "Poke" : "Home Assistant")"
+                                       + (routeReason.map { " (smart routing: \($0))" } ?? ""),
+                                   source: source))
         showFlash(.sent, for: 1.5)
         play(.sent)
         recent.removeAll { $0.text == text }
@@ -351,6 +357,30 @@ struct RequestRecord: Identifiable {
                     reportFailure()
                 }
             }
+        }
+    }
+    /// The backend for one request. With smart routing each request is classified on its own
+    /// and still goes to exactly one backend: no fallback, no retry on the other one.
+    private func resolveDestination(for text: String) -> (backend: String, reason: String?) {
+        guard selectedBackend == "smart" else { return (selectedBackend, nil) }
+        var deviceWords = RequestFilter.parseKeywords(customKeywords)
+        if useHAVocabulary { deviceWords.formUnion(haWords) }
+        let decision = IntentRouter.route(text, extraDeviceWords: deviceWords,
+                                          fallback: smartFallback == "home_assistant" ? .homeAssistant : .poke)
+        return (decision.backend.rawValue, decision.reason)
+    }
+    var backendTitle: String {
+        switch selectedBackend {
+        case "poke": "Poke"
+        case "smart": "Smart routing"
+        default: "Home Assistant"
+        }
+    }
+    var backendStatus: String {
+        switch selectedBackend {
+        case "poke": apiState
+        case "smart": "Devices → Home Assistant, rest → \(smartFallback == "home_assistant" ? "Home Assistant" : "Poke")"
+        default: haState
         }
     }
     /// Activity list: the filter held this back, but the user wants it sent. Remembered for that exact sentence.
