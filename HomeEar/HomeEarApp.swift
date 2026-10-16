@@ -14,7 +14,7 @@ import AppKit
         }
     }
     var body: some Scene {
-        MenuBarExtra("HomeEar", systemImage: state.microphoneOn ? "waveform" : "waveform.slash") {
+        MenuBarExtra("HomeEar", systemImage: state.menuBarPhase.symbol) {
             PanelView(state: state)
                 .frame(width: 320)
         }
@@ -276,6 +276,11 @@ struct HomeEarSettingsView: View {
                 Toggle("Speak replies aloud", isOn: $state.speakReplies)
             } header: { Text("Replies") } footer: {
                 note("Home Assistant answers are read aloud. While HomeEar speaks, and for a moment after, microphone input is ignored so it never hears itself. Poke speaks through its own voice tool either way.")
+            }
+            Section {
+                Toggle("Play sounds", isOn: $state.playSounds)
+            } header: { Text("Feedback") } footer: {
+                note("A soft system sound when HomeEar starts waiting for you, when a request was sent and when something went wrong. The menu bar icon always shows the state: listening, waiting for you, sent, problem or paused.")
             }
             Section {
                 Toggle("Keep listening after a reply", isOn: $state.followUpEnabled)

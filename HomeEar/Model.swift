@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import Security
 import ServiceManagement
 import Combine
@@ -122,6 +123,19 @@ struct RequestRecord: Identifiable {
             if let data = try? JSONEncoder().encode(feedback) { UserDefaults.standard.set(data, forKey: "filterFeedback") }
         }
     }
+    @Published var playSounds = UserDefaults.standard.bool(forKey: "playSounds") {
+        didSet { UserDefaults.standard.set(playSounds, forKey: "playSounds") }
+    }
+    /// True while the router waits for speech without a wake word (command, follow-up, answer).
+    @Published private(set) var capturing = false
+    /// A result that briefly replaces the steady menu bar icon (sent, error).
+    @Published private(set) var flash: AssistantPhase?
+    private var flashToken = 0
+    /// Our own sounds reach the microphone too; input is ignored until this time.
+    private var soundGuardUntil: TimeInterval = 0
+    var menuBarPhase: AssistantPhase {
+        AssistantPhase.resolve(microphoneOn: microphoneOn, capturing: capturing, flash: flash)
+    }
     @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
         didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
     }
@@ -176,7 +190,9 @@ struct RequestRecord: Identifiable {
         router.onDecision = { [weak self] decision in self?.latestDecision = decision }
         router.onCommandModeChanged = { [weak self] active in
             guard let self else { return }
+            self.capturing = active
             self.speechState = active ? "Listening for command…" : (self.microphoneOn ? "Listening on device" : "Paused")
+            if active { self.play(.heard) }
         }
         // Launching inside a quiet window must not pause a mic the user starts by hand.
         wasQuiet = quietHoursEnabled && QuietHours(startHour: quietStart, endHour: quietEnd).contains(Date())
@@ -225,6 +241,25 @@ struct RequestRecord: Identifiable {
         // The reply is out; the next few seconds may hold an answer or a follow-up.
         if microphoneOn { router.openFollowUp(expectsAnswer: expectsAnswer) }
     }
+    /// Briefly shows a result in the menu bar icon, then goes back to the steady state.
+    private func showFlash(_ phase: AssistantPhase, for seconds: TimeInterval) {
+        flashToken += 1
+        let token = flashToken
+        flash = phase
+        Task {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            if flashToken == token { flash = nil }
+        }
+    }
+    private func play(_ cue: SoundCue) {
+        guard playSounds, let sound = NSSound(named: NSSound.Name(cue.systemSoundName)) else { return }
+        soundGuardUntil = ProcessInfo.processInfo.systemUptime + 1.0
+        sound.play()
+    }
+    private func reportFailure() {
+        showFlash(.error, for: 4)
+        play(.error)
+    }
     private func askBack(_ pending: PendingRequest) {
         guard speakReplies else { return }
         let german = language.hasPrefix("de")
@@ -234,8 +269,9 @@ struct RequestRecord: Identifiable {
         tts.speak(prompt, expectsAnswer: true)
     }
     func receive(_ text: String, isFinal: Bool) {
-        // Our own voice coming back through the microphone is not a request.
-        if echoGuard.shouldDrop(at: ProcessInfo.processInfo.systemUptime) { return }
+        // Our own voice or sounds coming back through the microphone are not a request.
+        let now = ProcessInfo.processInfo.systemUptime
+        if echoGuard.shouldDrop(at: now) || now < soundGuardUntil { return }
         latestText = text
         router.config.wakeWordEnabled = wakeWordEnabled
         router.config.proactiveEnabled = proactiveEnabled
@@ -260,6 +296,8 @@ struct RequestRecord: Identifiable {
         guard completedSetup || destination == "home_assistant" else { return }
         activity.add(ActivityEntry(date: Date(), text: text, outcome: .sent,
                                    reason: "Sent to \(destination == "poke" ? "Poke" : "Home Assistant")", source: source))
+        showFlash(.sent, for: 1.5)
+        play(.sent)
         recent.removeAll { $0.text == text }
         recent.insert(RequestRecord(text: text, source: source, date: Date()), at: 0)
         if recent.count > 5 { recent.removeLast(recent.count - 5) }
@@ -298,6 +336,7 @@ struct RequestRecord: Identifiable {
                     // Never retry a command after a timeout: it might have executed.
                     haState = error.localizedDescription
                     latestDecision = "Home Assistant: result unconfirmed; no retry"
+                    reportFailure()
                 }
             }
         } else {
@@ -307,7 +346,10 @@ struct RequestRecord: Identifiable {
                     try await PokeBackend().send(text)
                     apiState = "Delivered to Poke"
                     latestDecision = "\(source.rawValue) → sent to Poke"
-                } catch { apiState = "Forwarding unavailable: \(error.localizedDescription)" }
+                } catch {
+                    apiState = "Forwarding unavailable: \(error.localizedDescription)"
+                    reportFailure()
+                }
             }
         }
     }
