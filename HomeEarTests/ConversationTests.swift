@@ -1,11 +1,12 @@
 import XCTest
 @testable import HomeEar
 
+/// Scores 3: one point short of strict mode, with an entity and a question opener.
+/// File-level so the @MainActor test closures don't capture the test case.
+private let borderline = "wie wird das wetter morgen"
+
 /// Router behaviour around questions, confirmations and follow-ups.
 final class ConversationTests: XCTestCase {
-    /// Scores 3: one point short of strict mode, with an entity and a question opener.
-    private let borderline = "wie wird das wetter morgen"
-
     private struct Outcome {
         var delivered: [(text: String, source: FilterSource)] = []
         var asked: [String] = []
@@ -25,7 +26,7 @@ final class ConversationTests: XCTestCase {
     }
 
     func testBorderlineRequestIsAskedNotSent() async {
-        let outcome = await run { $0.receive(self.borderline, isFinal: true) }
+        let outcome = await run { $0.receive(borderline, isFinal: true) }
         XCTAssertTrue(outcome.delivered.isEmpty)
         XCTAssertEqual(outcome.asked, [borderline])
         XCTAssertEqual(outcome.pending, [borderline])
@@ -33,7 +34,7 @@ final class ConversationTests: XCTestCase {
 
     func testYesSendsTheRequest() async {
         let outcome = await run {
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.receive("ja", isFinal: true)
         }
         XCTAssertEqual(outcome.delivered.map { $0.text }, [borderline])
@@ -43,7 +44,7 @@ final class ConversationTests: XCTestCase {
 
     func testNoDropsTheRequestAndLaterYesDoesNothing() async {
         let outcome = await run {
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.receive("nein", isFinal: true)
             $0.receive("ja", isFinal: true)
         }
@@ -52,7 +53,7 @@ final class ConversationTests: XCTestCase {
 
     func testUnrelatedSpeechKeepsTheQuestionOpen() async {
         let outcome = await run {
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.receive("hast du das gesehen", isFinal: true)
             $0.receive("ja", isFinal: true)
         }
@@ -61,12 +62,12 @@ final class ConversationTests: XCTestCase {
 
     func testPanelButtons() async {
         let confirmed = await run {
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.confirmPending()
         }
         XCTAssertEqual(confirmed.delivered.map { $0.text }, [borderline])
         let discarded = await run {
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.discardPending()
             $0.confirmPending()
         }
@@ -74,7 +75,7 @@ final class ConversationTests: XCTestCase {
     }
 
     func testDistantSpeechIsNotAskedAbout() async {
-        let outcome = await run { $0.receive(self.borderline, isFinal: true, audio: AudioFeatures(snr: 5)) }
+        let outcome = await run { $0.receive(borderline, isFinal: true, audio: AudioFeatures(snr: 5)) }
         XCTAssertTrue(outcome.asked.isEmpty)
         XCTAssertTrue(outcome.delivered.isEmpty)
     }
@@ -82,16 +83,16 @@ final class ConversationTests: XCTestCase {
     func testAskingCanBeSwitchedOff() async {
         let outcome = await run {
             $0.config.askWhenUnsure = false
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
         }
         XCTAssertTrue(outcome.asked.isEmpty)
     }
 
     func testSameSentenceIsNotAskedTwiceInARow() async {
         let outcome = await run {
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.discardPending()
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
         }
         XCTAssertEqual(outcome.asked.count, 1)
     }
@@ -99,7 +100,7 @@ final class ConversationTests: XCTestCase {
     func testExpiredQuestionIsDropped() async {
         let outcome = await run {
             $0.config.confirmationWindow = -1
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.receive("ja", isFinal: true)
         }
         XCTAssertTrue(outcome.delivered.isEmpty)
@@ -175,7 +176,7 @@ final class ConversationTests: XCTestCase {
 
     func testFollowUpWindowDoesNotReplaceAnOpenQuestion() async {
         let outcome = await run {
-            $0.receive(self.borderline, isFinal: true)
+            $0.receive(borderline, isFinal: true)
             $0.openFollowUp(expectsAnswer: false)
             $0.receive("ja", isFinal: true)
         }
