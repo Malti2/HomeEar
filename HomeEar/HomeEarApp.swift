@@ -27,12 +27,12 @@ import AppKit
         .defaultSize(width: 560, height: 470)
         Window("HomeEar Settings", id: "settings") {
             HomeEarSettingsView(state: state)
-                .frame(minWidth: 520, minHeight: 480)
+                .frame(minWidth: 640, minHeight: 440)
                 .onAppear {
                     NSApp.activate(ignoringOtherApps: true)
                 }
         }
-        .defaultSize(width: 560, height: 540)
+        .defaultSize(width: 740, height: 520)
     }
     private func bringSetupForward() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -138,72 +138,164 @@ struct StatusRow: View {
 }
 
 
-/// Configuration is separate from the first-run setup flow.
+enum SettingsPane: String, CaseIterable, Identifiable {
+    case general, speech, filter, poke, homeAssistant, update
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .general: "General"
+        case .speech: "Speech"
+        case .filter: "Request Filter"
+        case .poke: "Poke"
+        case .homeAssistant: "Home Assistant"
+        case .update: "Update"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
+        case .speech: "waveform"
+        case .filter: "line.3.horizontal.decrease.circle"
+        case .poke: "paperplane"
+        case .homeAssistant: "house"
+        case .update: "arrow.triangle.2.circlepath"
+        }
+    }
+}
+
+/// Configuration is separate from the first-run setup flow. Sidebar of
+/// categories with one grouped form per pane, like System Settings.
 struct HomeEarSettingsView: View {
     @ObservedObject var state: AppState
+    @State private var selection: SettingsPane?
     @State private var key = ""
     @State private var revealKey = false
     @State private var haToken = ""
+
+    init(state: AppState, initialPane: SettingsPane = .general) {
+        self.state = state
+        _selection = State(initialValue: initialPane)
+    }
+
     var body: some View {
+        NavigationSplitView {
+            List(selection: $selection) {
+                ForEach(SettingsPane.allCases) { pane in
+                    Label(pane.title, systemImage: pane.symbol).tag(pane)
+                }
+            }
+            .navigationSplitViewColumnWidth(min: 170, ideal: 185, max: 220)
+        } detail: {
+            let pane = selection ?? .general
+            Group {
+                switch pane {
+                case .general: generalPane
+                case .speech: speechPane
+                case .filter: filterPane
+                case .poke: pokePane
+                case .homeAssistant: homeAssistantPane
+                case .update: updatePane
+                }
+            }
+            .formStyle(.grouped)
+            .navigationTitle(pane.title)
+        }
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func hourLabel(_ hour: Int) -> String { hour < 10 ? "0\(hour):00" : "\(hour):00" }
+
+    // MARK: panes
+
+    private var generalPane: some View {
         Form {
-            Section("Request destination") {
+            Section {
                 Picker("Send requests to", selection: $state.selectedBackend) {
                     Text("Poke").tag("poke")
                     Text("Home Assistant").tag("home_assistant")
                 }.pickerStyle(.segmented)
-                Text("Only the selected backend receives your requests. No automatic fallback.")
-                    .font(.caption).foregroundStyle(.secondary)
+            } header: { Text("Destination") } footer: {
+                note("Only the selected backend receives your requests. There is no automatic fallback.")
             }
-            Section("Home Assistant") {
-                TextField("Server URL (https://...)", text: $state.haURL)
-                SecureField("Long-lived access token", text: $haToken)
-                HStack {
-                    Button("Save token") {
-                        if state.saveHAToken(haToken) { haToken = "" }
-                    }.disabled(haToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button(state.haTesting ? "Checking..." : "Test connection") { state.testHomeAssistant() }
-                        .disabled(state.haTesting)
-                }
-                Text("Token stays in Keychain. Use HTTPS or a private VPN address. Assist uses the selected speech language; no paid AI calls.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text(state.haState).font(.caption).foregroundStyle(.secondary)
-                HStack {
-                    Button("Import room and device names") { state.importHAVocabulary() }
-                    if !state.haWords.isEmpty { Button("Clear") { state.clearHAVocabulary() } }
-                }
-                Toggle("Use imported names in the request filter", isOn: $state.useHAVocabulary)
-                Text("\(state.haVocabularyState). Names are read once (read-only) and cached on this Mac so the filter knows words like \"Lesecke\" or \"Stehlampe\". Refreshed quietly at launch after the first import.")
-                    .font(.caption).foregroundStyle(.secondary)
-                if !state.haResponse.isEmpty {
-                    Text(state.haResponse).font(.callout)
-                    Button("Read reply (pauses microphone)") { state.speakHAResponse() }
-                }
+            Section("Startup") {
+                Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))
             }
-            Section("Speech recognition") {
+            Section {
+                Toggle("Pause microphone during quiet hours", isOn: $state.quietHoursEnabled)
+                if state.quietHoursEnabled {
+                    Picker("From", selection: $state.quietStart) {
+                        ForEach(0..<24, id: \.self) { Text(hourLabel($0)).tag($0) }
+                    }
+                    Picker("Until", selection: $state.quietEnd) {
+                        ForEach(0..<24, id: \.self) { Text(hourLabel($0)).tag($0) }
+                    }
+                }
+            } header: { Text("Quiet hours") } footer: {
+                note("The microphone pauses when the window starts and resumes when it ends, unless you paused it yourself.")
+            }
+        }
+    }
+
+    private var speechPane: some View {
+        Form {
+            Section {
                 Picker("Language", selection: Binding(get: { state.language }, set: { state.saveLanguage($0) })) {
                     Text("German (Germany)").tag("de-DE")
                     Text("English (US)").tag("en-US")
                 }
-                Toggle("Hey Poke wake word", isOn: $state.wakeWordEnabled)
-                Toggle("Proactive requests", isOn: $state.proactiveEnabled)
-                Toggle("Strict request filter", isOn: $state.strictFilter)
-                Toggle("Ignore distant speech (TV, other rooms)", isOn: $state.audioCuesEnabled)
-                Text("Compares how loud speech is to the room and to your own \"Hey Poke\" voice. Only loudness is measured; it can lower a request's score but never sends one on its own.")
-                    .font(.caption).foregroundStyle(.secondary)
-                TextField("Extra smart-home words (comma separated)", text: $state.customKeywords)
-                Text("Words like ventilator or kamin make a sentence count as a home request in the proactive filter.")
-                    .font(.caption).foregroundStyle(.secondary)
-                TextField("Names of people at home (comma separated)", text: $state.householdNames)
-                Text("A sentence that starts or ends with one of these names (\"Anna, mach das Licht an\") is treated as meant for them and not sent.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Text("Apple recognition runs on this Mac in fast live mode. Only finalized requests are sent to your selected backend.")
-                    .font(.caption).foregroundStyle(.secondary)
                 LabeledContent("Status", value: state.speechState)
                 Button(state.microphoneOn ? "Pause microphone" : "Start microphone") {
                     state.microphoneOn ? state.stop() : state.start()
                 }
+            } header: { Text("Recognition") } footer: {
+                note("Apple recognition runs on this Mac in fast live mode. Only finalized requests are sent to your selected backend.")
             }
-            Section("Poke connection") {
+            Section {
+                Toggle("Hey Poke wake word", isOn: $state.wakeWordEnabled)
+                Toggle("Proactive requests", isOn: $state.proactiveEnabled)
+            } header: { Text("Activation") } footer: {
+                note("The wake word always sends what follows. Proactive requests are spoken commands without a wake word that pass the request filter.")
+            }
+        }
+    }
+
+    private var filterPane: some View {
+        Form {
+            Section {
+                Toggle("Strict request filter", isOn: $state.strictFilter)
+                Toggle("Ignore distant speech (TV, other rooms)", isOn: $state.audioCuesEnabled)
+            } header: { Text("Sensitivity") } footer: {
+                note("Strict needs a clearer command before sending. Distant speech compares loudness to the room and to your own \"Hey Poke\" voice; only loudness is measured, and it can lower a score but never send a request on its own.")
+            }
+            Section {
+                TextField("Extra smart-home words", text: $state.customKeywords, prompt: Text("ventilator, kamin"))
+            } header: { Text("Your words") } footer: {
+                note("Comma separated. These make a sentence count as a home request in the proactive filter.")
+            }
+            Section {
+                TextField("Names of people at home", text: $state.householdNames, prompt: Text("Anna, Ben"))
+            } header: { Text("People at home") } footer: {
+                note("A sentence that starts or ends with one of these names (\"Anna, mach das Licht an\") is meant for them and is not sent.")
+            }
+            Section {
+                LabeledContent("Imported", value: state.haVocabularyState)
+                Toggle("Use imported names in the filter", isOn: $state.useHAVocabulary)
+                HStack {
+                    Button("Import room and device names") { state.importHAVocabulary() }
+                    if !state.haWords.isEmpty { Button("Clear") { state.clearHAVocabulary() } }
+                }
+            } header: { Text("Home Assistant names") } footer: {
+                note("Reads room and device names once (read-only) and caches the words on this Mac, so the filter knows words like \"Lesecke\" or \"Stehlampe\". Needs the Home Assistant connection. Refreshed quietly at launch after the first import.")
+            }
+        }
+    }
+
+    private var pokePane: some View {
+        Form {
+            Section {
                 HStack {
                     Group {
                         if revealKey { TextField("Replace Poke API key", text: $key) }
@@ -215,38 +307,54 @@ struct HomeEarSettingsView: View {
                     if KeyStore.save(key) { key = ""; state.apiState = "Key saved; ready to forward" }
                     else { state.apiState = "Could not store key in Keychain" }
                 }.disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Text("Leave blank to keep your saved key. Keys stay in macOS Keychain.")
-                    .font(.caption).foregroundStyle(.secondary)
                 LabeledContent("API", value: state.apiState)
-                LabeledContent("Voice tunnel", value: state.tunnel.state)
+            } header: { Text("API key") } footer: {
+                note("Leave blank to keep your saved key. Keys stay in macOS Keychain.")
+            }
+            Section("Voice tunnel") {
+                LabeledContent("Status", value: state.tunnel.state)
                 Button(state.tunnel.hasCredentials ? "Reconnect voice tunnel" : "Sign in to Poke") { state.tunnel.start() }
                 if state.tunnel.loginURL != nil {
                     Button("Open Poke sign-in") { state.tunnel.openLogin() }
                     if !state.tunnel.loginCode.isEmpty { Text("Code: \(state.tunnel.loginCode)").font(.caption.monospaced()) }
                 }
+            }
+            Section("Voice") {
                 TextField("Voice identifier (optional)", text: $state.voiceID)
                     .onChange(of: state.voiceID) { _, value in UserDefaults.standard.set(value, forKey: "voiceID") }
             }
-            Section("General") {
-                Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))
-                Toggle("Pause microphone during quiet hours", isOn: $state.quietHoursEnabled)
-                if state.quietHoursEnabled {
-                    Picker("From", selection: $state.quietStart) {
-                        ForEach(0..<24, id: \.self) { Text($0 < 10 ? "0\($0):00" : "\($0):00").tag($0) }
-                    }
-                    Picker("Until", selection: $state.quietEnd) {
-                        ForEach(0..<24, id: \.self) { Text($0 < 10 ? "0\($0):00" : "\($0):00").tag($0) }
-                    }
-                    Text("The microphone pauses at the start and resumes at the end, unless you paused it yourself.")
-                        .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    private var homeAssistantPane: some View {
+        Form {
+            Section {
+                TextField("Server URL", text: $state.haURL, prompt: Text("https://..."))
+                SecureField("Long-lived access token", text: $haToken)
+                HStack {
+                    Button("Save token") {
+                        if state.saveHAToken(haToken) { haToken = "" }
+                    }.disabled(haToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button(state.haTesting ? "Checking..." : "Test connection") { state.testHomeAssistant() }
+                        .disabled(state.haTesting)
+                }
+                LabeledContent("Status", value: state.haState)
+            } header: { Text("Server") } footer: {
+                note("The token stays in Keychain. Use HTTPS or a private VPN address. Assist uses the selected speech language; no paid AI calls.")
+            }
+            if !state.haResponse.isEmpty {
+                Section("Last reply") {
+                    Text(state.haResponse).font(.callout)
+                    Button("Read reply (pauses microphone)") { state.speakHAResponse() }
                 }
             }
-            Section("Update") {
-                UpdateSettingsView(updates: state.updates)
-            }
         }
-        .formStyle(.grouped)
-        .padding(12)
+    }
+
+    private var updatePane: some View {
+        Form {
+            Section { UpdateSettingsView(updates: state.updates) }
+        }
     }
 }
 
@@ -262,7 +370,12 @@ struct HomeEarSettingsView: View {
                 try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
                 let views: [(String, AnyView, NSSize)] = [
                     ("panel", AnyView(PanelView(state: state).preferredColorScheme(.dark)), NSSize(width: 320, height: 410)),
-                    ("settings", AnyView(HomeEarSettingsView(state: state).preferredColorScheme(.dark)), NSSize(width: 580, height: 750)),
+                    ("settings-general", AnyView(HomeEarSettingsView(state: state, initialPane: .general).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
+                    ("settings-speech", AnyView(HomeEarSettingsView(state: state, initialPane: .speech).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
+                    ("settings-filter", AnyView(HomeEarSettingsView(state: state, initialPane: .filter).preferredColorScheme(.dark)), NSSize(width: 740, height: 760)),
+                    ("settings-poke", AnyView(HomeEarSettingsView(state: state, initialPane: .poke).preferredColorScheme(.dark)), NSSize(width: 740, height: 560)),
+                    ("settings-assist", AnyView(HomeEarSettingsView(state: state, initialPane: .homeAssistant).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
+                    ("settings-update", AnyView(HomeEarSettingsView(state: state, initialPane: .update).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
                     ("onboarding", AnyView(OnboardingView(state: state).preferredColorScheme(.dark)), NSSize(width: 560, height: 470))
                 ]
                 var captures = views
@@ -275,7 +388,7 @@ struct HomeEarSettingsView: View {
                 captures.append(("setup-assist", AnyView(OnboardingView(state: haState, initialStep: 2).preferredColorScheme(.dark)), NSSize(width: 560, height: 540)))
                 let betaState = AppState()
                 betaState.updates.setChannel(.beta)
-                captures.append(("settings-beta", AnyView(HomeEarSettingsView(state: betaState).preferredColorScheme(.dark)), NSSize(width: 580, height: 750)))
+                captures.append(("settings-update-beta", AnyView(HomeEarSettingsView(state: betaState, initialPane: .update).preferredColorScheme(.dark)), NSSize(width: 740, height: 560)))
                 for (name, view, size) in captures {
                     let window = NSWindow(contentRect: NSRect(origin: .zero, size: size),
                                           styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -294,23 +407,6 @@ struct HomeEarSettingsView: View {
                     capture.waitUntilExit()
                     guard capture.terminationStatus == 0 else {
                         throw NSError(domain: "HomeEarUICapture", code: Int(capture.terminationStatus))
-                    }
-                    if name == "settings" || name == "settings-beta" {
-                        func scrollViews(_ view: NSView) -> [NSScrollView] {
-                            (view as? NSScrollView).map { [$0] } ?? view.subviews.flatMap { scrollViews($0) }
-                        }
-                        for scroll in scrollViews(window.contentView!) {
-                            if let document = scroll.documentView {
-                                document.scroll(NSPoint(x: 0, y: max(0, document.bounds.height - scroll.contentView.bounds.height)))
-                                scroll.reflectScrolledClipView(scroll.contentView)
-                            }
-                        }
-                        try await Task.sleep(nanoseconds: 500_000_000)
-                        let lower = Process()
-                        lower.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-                        lower.arguments = ["-x", "-o", "-l", String(window.windowNumber), directory + "/HomeEar-" + name + "-lower.png"]
-                        try lower.run(); lower.waitUntilExit()
-                        guard lower.terminationStatus == 0 else { throw NSError(domain: "HomeEarUICapture", code: 1) }
                     }
                     window.orderOut(nil)
                 }
