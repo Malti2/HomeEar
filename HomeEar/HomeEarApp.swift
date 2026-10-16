@@ -152,7 +152,7 @@ struct StatusRow: View {
 
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, speech, filter, shortcuts, poke, homeAssistant, update
+    case general, speech, filter, shortcuts, activity, poke, homeAssistant, update
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -160,6 +160,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .speech: "Speech"
         case .filter: "Request Filter"
         case .shortcuts: "Shortcuts"
+        case .activity: "Activity"
         case .poke: "Poke"
         case .homeAssistant: "Home Assistant"
         case .update: "Update"
@@ -171,6 +172,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .speech: "waveform"
         case .filter: "line.3.horizontal.decrease.circle"
         case .shortcuts: "bolt"
+        case .activity: "list.bullet.rectangle"
         case .poke: "paperplane"
         case .homeAssistant: "house"
         case .update: "arrow.triangle.2.circlepath"
@@ -208,6 +210,7 @@ struct HomeEarSettingsView: View {
                 case .speech: speechPane
                 case .filter: filterPane
                 case .shortcuts: shortcutsPane
+                case .activity: activityPane
                 case .poke: pokePane
                 case .homeAssistant: homeAssistantPane
                 case .update: updatePane
@@ -350,6 +353,51 @@ struct HomeEarSettingsView: View {
         }
     }
 
+    private func outcomeColor(_ outcome: ActivityOutcome) -> Color {
+        switch outcome {
+        case .sent: .green
+        case .asked: .orange
+        case .filtered, .cancelled, .duplicate: .secondary
+        }
+    }
+
+    private var activityPane: some View {
+        Form {
+            Section {
+                if state.activity.entries.isEmpty {
+                    Text("Nothing yet. What HomeEar hears and what it does with it shows up here while the app runs.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(state.activity.entries) { entry in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(entry.outcome.label).font(.caption.weight(.semibold)).foregroundStyle(outcomeColor(entry.outcome))
+                            Spacer()
+                            Text(entry.date, style: .time).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text(entry.text).lineLimit(3)
+                        Text(entry.reason).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        if entry.outcome == .filtered {
+                            Button("Send anyway") { state.sendAnyway(entry) }.font(.caption)
+                        } else if entry.outcome == .sent, entry.source == .proactive {
+                            Button("Wasn't a command") { state.markNotACommand(entry) }.font(.caption)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            } header: { Text("This session") } footer: {
+                note("Kept in memory only and gone when you quit. \"Send anyway\" and \"Wasn't a command\" teach the filter that exact sentence; only a one-way hash of it is saved, never the words.")
+            }
+            Section("Learned corrections") {
+                LabeledContent("Remembered sentences", value: "\(state.feedback.count)")
+                HStack {
+                    Button("Clear activity") { state.clearActivity() }.disabled(state.activity.entries.isEmpty)
+                    Button("Forget learned corrections") { state.clearFeedback() }.disabled(state.feedback.count == 0)
+                }
+            }
+        }
+    }
+
     private var pokePane: some View {
         Form {
             Section {
@@ -431,6 +479,7 @@ struct HomeEarSettingsView: View {
                     ("settings-speech", AnyView(HomeEarSettingsView(state: state, initialPane: .speech).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
                     ("settings-filter", AnyView(HomeEarSettingsView(state: state, initialPane: .filter).preferredColorScheme(.dark)), NSSize(width: 740, height: 760)),
                     ("settings-shortcuts", AnyView(HomeEarSettingsView(state: state, initialPane: .shortcuts).preferredColorScheme(.dark)), NSSize(width: 740, height: 420)),
+                    ("settings-activity", AnyView(HomeEarSettingsView(state: state, initialPane: .activity).preferredColorScheme(.dark)), NSSize(width: 740, height: 420)),
                     ("settings-poke", AnyView(HomeEarSettingsView(state: state, initialPane: .poke).preferredColorScheme(.dark)), NSSize(width: 740, height: 560)),
                     ("settings-assist", AnyView(HomeEarSettingsView(state: state, initialPane: .homeAssistant).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),
                     ("settings-update", AnyView(HomeEarSettingsView(state: state, initialPane: .update).preferredColorScheme(.dark)), NSSize(width: 740, height: 520)),

@@ -55,6 +55,8 @@ struct PendingRequest: Equatable {
         var extraSensitive: Set<String> = []
         /// Personal shortcuts; matched on the whole utterance only.
         var quickPhrases: [QuickPhrase] = []
+        /// Corrections from the activity list; they decide exact sentences before the filter does.
+        var feedback = FilterFeedback()
     }
 
     private static let posix = Locale(identifier: "en_US_POSIX")
@@ -75,6 +77,8 @@ struct PendingRequest: Equatable {
     var onAskBack: ((PendingRequest) -> Void)?
     /// The open question changed (nil once answered, discarded or expired).
     var onPendingChanged: ((PendingRequest?) -> Void)?
+    /// Everything the router decided about what it heard, with the reason, for the activity list.
+    var onEvent: ((ActivityEntry) -> Void)?
 
     private enum Mode {
         case idle
@@ -133,6 +137,7 @@ struct PendingRequest: Equatable {
             case .no:
                 setMode(.idle)
                 onDecision?("Discarded")
+                emit(pending.text, .cancelled, "You said no")
             case nil:
                 break // not an answer; keep waiting until the window closes
             }
@@ -150,11 +155,31 @@ struct PendingRequest: Equatable {
         // stripped so Poke gets the command, not the trigger phrase.
         let command = WakeWordDetector.stripLeadingWakeWord(from: trimmed) ?? trimmed
         let cue: AudioCue = config.audioCuesEnabled ? audio.map { voiceProfile.cue(forSNR: $0.snr) } ?? .normal : .normal
+        // The user already corrected this exact sentence. A learned "send" never overrides
+        // distant speech or the safety gate.
+        switch config.feedback.verdict(for: command) {
+        case .ignore:
+            onDecision?("Not sent: you marked this as not a command")
+            emit(command, .filtered, "You marked this as not a command")
+            return
+        case .send where cue != .far:
+            if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
+                onDecision?("Not sent: \"\(term)\" needs the wake word")
+                emit(command, .filtered, "\"\(term)\" needs the wake word")
+            } else {
+                onDecision?("Sent: you sent this before")
+                deliver(command, source: .proactive)
+            }
+            return
+        default:
+            break
+        }
         switch RequestFilter.checkProactive(command, strict: config.strictFilter, extra: config.extraEntities,
                                               addressees: config.addressees, audio: cue) {
         case .accept(let source, let reason):
             if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
                 onDecision?("Not sent: \"\(term)\" needs the wake word")
+                emit(command, .filtered, "\"\(term)\" needs the wake word")
                 return
             }
             onDecision?("\(source.rawValue): \(reason)")
@@ -162,13 +187,16 @@ struct PendingRequest: Equatable {
         case .uncertain(let reason):
             if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
                 onDecision?("Not sent: \"\(term)\" needs the wake word")
+                emit(command, .filtered, "\"\(term)\" needs the wake word")
             } else if config.askWhenUnsure, cue != .far, canAsk(command) {
                 ask(PendingRequest(text: command, source: .proactive, reason: reason))
             } else {
                 onDecision?("Background speech filtered (\(reason))")
+                emit(command, .filtered, "Almost a command, not asked: \(reason)")
             }
         case .reject(let reason):
             onDecision?(reason)
+            emit(command, .filtered, reason)
         }
     }
 
@@ -199,9 +227,15 @@ struct PendingRequest: Equatable {
 
     /// Panel button: drop the request that was asked about.
     func discardPending() {
-        guard case .awaitingConfirmation = mode else { return }
+        guard case .awaitingConfirmation(let pending, _) = mode else { return }
         setMode(.idle)
         onDecision?("Discarded")
+        emit(pending.text, .cancelled, "Discarded")
+    }
+
+    /// Activity list: send a sentence the filter held back. Still asks first for sensitive requests.
+    func sendManually(_ text: String) {
+        deliverChecked(text, source: .proactive)
     }
 
     /// Call when the microphone stops so a pending window can't leak
@@ -278,6 +312,7 @@ struct PendingRequest: Equatable {
         setMode(.awaitingConfirmation(pending, deadline: deadline))
         armTimer(for: deadline)
         onDecision?(pending.sensitive ? "Please confirm: \(pending.reason)" : "Not sure — asking: \(pending.reason)")
+        emit(pending.text, .asked, pending.reason, source: pending.source)
         onAskBack?(pending)
     }
 
@@ -318,7 +353,9 @@ struct PendingRequest: Equatable {
         switch mode {
         case .awaitingCommand: message = "Wake word timed out — listening normally"
         case .followUp: message = "Follow-up window closed"
-        case .awaitingConfirmation: message = "No answer — request discarded"
+        case .awaitingConfirmation(let pending, _):
+            message = "No answer — request discarded"
+            emit(pending.text, .cancelled, "No answer in time")
         case .idle: return
         }
         setMode(.idle)
@@ -351,6 +388,10 @@ struct PendingRequest: Equatable {
         if wasActive != isActive(new) { onCommandModeChanged?(isActive(new)) }
         let newPending = pending(of: new)
         if oldPending != newPending { onPendingChanged?(newPending) }
+    }
+
+    private func emit(_ text: String, _ outcome: ActivityOutcome, _ reason: String, source: FilterSource? = nil) {
+        onEvent?(ActivityEntry(date: Date(), text: text, outcome: outcome, reason: reason, source: source))
     }
 
     private func learn(_ audio: AudioFeatures?) {
@@ -399,6 +440,7 @@ struct PendingRequest: Equatable {
         deliveries.removeAll { now.timeIntervalSince($0.at) > config.duplicateWindow }
         guard !deliveries.contains(where: { $0.key == key }) else {
             onDecision?("Duplicate suppressed (\(source.rawValue.lowercased()))")
+            emit(text, .duplicate, "Same request was sent in the last minute", source: source)
             return
         }
         deliveries.append((key, now))

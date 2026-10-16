@@ -110,6 +110,18 @@ struct RequestRecord: Identifiable {
             if let data = try? JSONEncoder().encode(quickPhrases) { UserDefaults.standard.set(data, forKey: "quickPhrases") }
         }
     }
+    /// What HomeEar heard and did this session. Memory only.
+    @Published var activity = ActivityLog()
+    /// Learned corrections, stored as hashes of sentences (see FilterFeedback).
+    @Published var feedback: FilterFeedback = {
+        guard let data = UserDefaults.standard.data(forKey: "filterFeedback"),
+              let value = try? JSONDecoder().decode(FilterFeedback.self, from: data) else { return FilterFeedback() }
+        return value
+    }() {
+        didSet {
+            if let data = try? JSONEncoder().encode(feedback) { UserDefaults.standard.set(data, forKey: "filterFeedback") }
+        }
+    }
     @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
         didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
     }
@@ -157,6 +169,7 @@ struct RequestRecord: Identifiable {
     init() {
         router.voiceProfile.referenceSNR = UserDefaults.standard.object(forKey: "voiceReferenceSNR") as? Double
         router.onVoiceReferenceChanged = { UserDefaults.standard.set($0, forKey: "voiceReferenceSNR") }
+        router.onEvent = { [weak self] entry in self?.activity.add(entry) }
         router.onAskBack = { [weak self] pending in self?.askBack(pending) }
         router.onPendingChanged = { [weak self] pending in self?.pendingConfirmation = pending }
         router.onDeliver = { [weak self] text, source in self?.forwardRequest(text: text, source: source) }
@@ -236,6 +249,7 @@ struct RequestRecord: Identifiable {
         router.config.askWhenUnsure = askWhenUnsure
         router.config.confirmSensitive = confirmSensitive
         router.config.quickPhrases = quickPhrases
+        router.config.feedback = feedback
         router.config.extraSensitive = RequestFilter.parseKeywords(sensitiveWords)
         let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
         router.receive(text, isFinal: isFinal, audio: features)
@@ -244,6 +258,8 @@ struct RequestRecord: Identifiable {
         // Capture the selected destination before suspension: one request, one backend.
         let destination = selectedBackend
         guard completedSetup || destination == "home_assistant" else { return }
+        activity.add(ActivityEntry(date: Date(), text: text, outcome: .sent,
+                                   reason: "Sent to \(destination == "poke" ? "Poke" : "Home Assistant")", source: source))
         recent.removeAll { $0.text == text }
         recent.insert(RequestRecord(text: text, source: source, date: Date()), at: 0)
         if recent.count > 5 { recent.removeLast(recent.count - 5) }
@@ -295,6 +311,19 @@ struct RequestRecord: Identifiable {
             }
         }
     }
+    /// Activity list: the filter held this back, but the user wants it sent. Remembered for that exact sentence.
+    func sendAnyway(_ entry: ActivityEntry) {
+        if SensitiveActions.match(in: entry.text, extra: RequestFilter.parseKeywords(sensitiveWords)) == nil {
+            feedback.record(.send, for: entry.text)
+        }
+        router.sendManually(entry.text)
+    }
+    /// Activity list: this was sent but should not have been. The exact sentence is ignored from now on.
+    func markNotACommand(_ entry: ActivityEntry) {
+        feedback.record(.ignore, for: entry.text)
+    }
+    func clearActivity() { activity.clear() }
+    func clearFeedback() { feedback.removeAll() }
     /// Sends a previous request again on the currently selected backend.
     func resend(_ record: RequestRecord) {
         forwardRequest(text: record.text, source: record.source)

@@ -92,9 +92,9 @@ struct RequestFilter {
         }
         let commandShaped = hits.contains { ["verb", "infinitive", "polite", "question"].contains($0) }
         if score == threshold - 1, hits.contains("entity"), commandShaped {
-            return .uncertain(reason: "Score \(score) (\(hits.joined(separator: "+")))")
+            return .uncertain(reason: "Score \(score) (\(hits.joined(separator: "+")))\(audio == .far ? ", sounded distant" : "")")
         }
-        return .reject(reason: "Background speech filtered (score \(score))")
+        return .reject(reason: "Background speech filtered (score \(score)\(audio == .far ? ", sounded distant" : ""))")
     }
 
     /// Short utterance right after a spoken reply that reads like a continuation
