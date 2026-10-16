@@ -1,7 +1,7 @@
 name: Build HomeEar
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
   workflow_dispatch:
 jobs:
   build:
