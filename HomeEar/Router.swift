@@ -24,6 +24,8 @@ import Foundation
         var maxHistory = 10
         /// User-defined smart-home words that count as entities in the proactive filter.
         var extraEntities: Set<String> = []
+        /// Names of people at home; a request addressed to one is not for HomeEar.
+        var addressees: Set<String> = []
     }
 
     private static let posix = Locale(identifier: "en_US_POSIX")
@@ -77,7 +79,8 @@ import Foundation
         // A leftover "hey poke" (wake word disabled, said out of habit) is
         // stripped so Poke gets the command, not the trigger phrase.
         let command = WakeWordDetector.stripLeadingWakeWord(from: trimmed) ?? trimmed
-        switch RequestFilter.checkProactive(command, strict: config.strictFilter, extra: config.extraEntities) {
+        switch RequestFilter.checkProactive(command, strict: config.strictFilter, extra: config.extraEntities,
+                                              addressees: config.addressees) {
         case .accept(let source, let reason):
             onDecision?("\(source.rawValue): \(reason)")
             deliver(command, source: source)

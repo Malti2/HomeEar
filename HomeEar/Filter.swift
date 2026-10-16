@@ -23,6 +23,10 @@ enum FilterDecision {
 ///   +1  question about a known entity       ("wie wird das Wetter?")
 ///   −2  starts with a subject pronoun       ("er will das Licht anmachen"),
 ///       unless a polite framing is present  ("ich möchte …")
+///   −2  starts a subordinate clause         ("wenn du das Licht anmachst …")
+///   −2  past-tense marker                   ("hat das Licht angemacht")
+///   −4  addressed to a person               ("Mama, mach das Licht aus"),
+///       built-in family words plus the household names the user adds
 ///   −3  laughter / non-speech tokens
 ///
 /// Strict mode needs 4 points, relaxed 3. Length gates stay: 12–400 chars,
@@ -37,7 +41,8 @@ enum FilterDecision {
 struct RequestFilter {
     private static let posix = Locale(identifier: "en_US_POSIX")
 
-    static func checkProactive(_ text: String, strict: Bool, extra: Set<String> = []) -> FilterDecision {
+    static func checkProactive(_ text: String, strict: Bool, extra: Set<String> = [],
+                               addressees: Set<String> = []) -> FilterDecision {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let words = value.split(whereSeparator: \.isWhitespace)
         guard value.count >= 12, words.count >= 3, value.count <= 400 else {
@@ -57,7 +62,7 @@ struct RequestFilter {
         }
         let hasEntity = mentionsEntity(tokens, extra: extra)
         let isPolite = polite.contains(where: { lower.contains($0) })
-        if !hits.contains("verb"), tokens.contains(where: { infinitives.contains($0) }) {
+        if !hits.contains("verb"), mentionsInfinitive(tokens) {
             score += 2; hits.append("infinitive")
         }
         if hasEntity { score += 2; hits.append("entity") }
@@ -66,6 +71,12 @@ struct RequestFilter {
             score += 1; hits.append("question")
         }
         if !isPolite, let first = tokens.first, subjects.contains(first) { score -= 2 }
+        if let first = tokens.first, subordinators.contains(first) { score -= 2 }
+        if tokens.contains(where: { pastMarkers.contains($0) }) { score -= 2 }
+        if let first = tokens.first, let last = tokens.last,
+           [first, last].contains(where: { vocatives.contains($0) || addressees.contains($0) }) {
+            score -= 4
+        }
         if tokens.contains(where: { anti.contains($0) }) { score -= 3 }
 
         let threshold = strict ? 4 : 3
@@ -82,6 +93,13 @@ struct RequestFilter {
             .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
             .map(String.init)
             .filter { $0.count >= 2 })
+    }
+
+    /// Infinitive command, also when the transcriber splits the particle off
+    /// ("an machen" instead of "anmachen").
+    private static func mentionsInfinitive(_ tokens: [String]) -> Bool {
+        if tokens.contains(where: { infinitives.contains($0) }) { return true }
+        return zip(tokens, tokens.dropFirst()).contains { infinitives.contains($0 + $1) }
     }
 
     private static func isSeparator(_ character: Character) -> Bool {
@@ -125,6 +143,26 @@ struct RequestFilter {
         "dimmen", "starten", "stoppen", "pausieren", "abspielen",
         "hochfahren", "runterfahren", "herunterfahren", "aufdrehen",
         "runterdrehen", "herunterdrehen", "ausstellen", "anstellen",
+        "stellen", "einstellen", "erhöhen", "senken", "reduzieren", "machen",
+    ]
+
+    /// Clause openers: the sentence is *about* an action, not a request.
+    private static let subordinators: Set<String> = [
+        "wenn", "dass", "weil", "ob", "obwohl", "damit", "falls",
+        "if", "because", "although",
+    ]
+
+    /// Auxiliaries that put the action in the past ("hat das Licht angemacht").
+    private static let pastMarkers: Set<String> = [
+        "hat", "hast", "habe", "hatte", "war", "waren", "wurde", "wurden",
+        "had", "were", "did", "has",
+    ]
+
+    /// Family words and pet names: at the start or end they mean the request
+    /// is for someone in the room, not for HomeEar.
+    private static let vocatives: Set<String> = [
+        "schatz", "schatzi", "liebling", "mama", "mami", "mutti", "papa", "papi",
+        "oma", "opa", "honey", "babe", "mom", "mum", "dad", "darling",
     ]
 
     /// Sentence-initial subjects that usually mean "talking about", not "asking".

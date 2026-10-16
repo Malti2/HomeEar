@@ -78,6 +78,9 @@ struct RequestRecord: Identifiable {
     @Published var customKeywords = UserDefaults.standard.string(forKey: "customKeywords") ?? "" {
         didSet { UserDefaults.standard.set(customKeywords, forKey: "customKeywords") }
     }
+    @Published var householdNames = UserDefaults.standard.string(forKey: "householdNames") ?? "" {
+        didSet { UserDefaults.standard.set(householdNames, forKey: "householdNames") }
+    }
     @Published var quietHoursEnabled = UserDefaults.standard.bool(forKey: "quietHoursEnabled") {
         didSet { UserDefaults.standard.set(quietHoursEnabled, forKey: "quietHoursEnabled"); evaluateQuietHours() }
     }
@@ -153,6 +156,7 @@ struct RequestRecord: Identifiable {
         router.config.proactiveEnabled = proactiveEnabled
         router.config.strictFilter = strictFilter
         router.config.extraEntities = RequestFilter.parseKeywords(customKeywords)
+        router.config.addressees = RequestFilter.parseKeywords(householdNames)
         router.receive(text, isFinal: isFinal)
     }
     private func forwardRequest(text: String, source: FilterSource) {
