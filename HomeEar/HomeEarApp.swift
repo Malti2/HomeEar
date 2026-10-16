@@ -56,7 +56,7 @@ struct PanelView: View {
             }
             if let pending = state.pendingConfirmation {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("DID YOU MEAN?").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    Text(pending.sensitive ? "CONFIRM" : "DID YOU MEAN?").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                     Text(pending.text).font(.subheadline).lineLimit(3)
                     HStack {
                         Button("Send") { state.router.confirmPending() }.buttonStyle(.borderedProminent)
@@ -303,6 +303,12 @@ struct HomeEarSettingsView: View {
                 TextField("Names of people at home", text: $state.householdNames, prompt: Text("Anna, Ben"))
             } header: { Text("People at home") } footer: {
                 note("A sentence that starts or ends with one of these names (\"Anna, mach das Licht an\") is meant for them and is not sent.")
+            }
+            Section {
+                Toggle("Confirm sensitive actions", isOn: $state.confirmSensitive)
+                TextField("Extra sensitive words", text: $state.sensitiveWords, prompt: Text("pool, tresor"))
+            } header: { Text("Safety") } footer: {
+                note("Locks, garage doors, alarm systems and ovens are never sent from background speech. With \"Hey Poke\" they ask for a yes first. Add your own words, comma separated.")
             }
             Section {
                 LabeledContent("Imported", value: state.haVocabularyState)

@@ -95,6 +95,12 @@ struct RequestRecord: Identifiable {
     @Published var followUpEnabled = UserDefaults.standard.object(forKey: "followUpEnabled") as? Bool ?? true {
         didSet { UserDefaults.standard.set(followUpEnabled, forKey: "followUpEnabled") }
     }
+    @Published var confirmSensitive = UserDefaults.standard.object(forKey: "confirmSensitive") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(confirmSensitive, forKey: "confirmSensitive") }
+    }
+    @Published var sensitiveWords = UserDefaults.standard.string(forKey: "sensitiveWords") ?? "" {
+        didSet { UserDefaults.standard.set(sensitiveWords, forKey: "sensitiveWords") }
+    }
     @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
         didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
     }
@@ -199,7 +205,10 @@ struct RequestRecord: Identifiable {
     }
     private func askBack(_ pending: PendingRequest) {
         guard speakReplies else { return }
-        let prompt = language.hasPrefix("de") ? "Meintest du: \(pending.text)?" : "Did you mean: \(pending.text)?"
+        let german = language.hasPrefix("de")
+        let prompt = pending.sensitive
+            ? (german ? "Soll ich das wirklich tun: \(pending.text)?" : "Do you really want me to: \(pending.text)?")
+            : (german ? "Meintest du: \(pending.text)?" : "Did you mean: \(pending.text)?")
         tts.speak(prompt, expectsAnswer: true)
     }
     func receive(_ text: String, isFinal: Bool) {
@@ -216,6 +225,8 @@ struct RequestRecord: Identifiable {
         router.config.audioCuesEnabled = audioCuesEnabled
         router.config.followUpEnabled = followUpEnabled
         router.config.askWhenUnsure = askWhenUnsure
+        router.config.confirmSensitive = confirmSensitive
+        router.config.extraSensitive = RequestFilter.parseKeywords(sensitiveWords)
         let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
         router.receive(text, isFinal: isFinal, audio: features)
     }

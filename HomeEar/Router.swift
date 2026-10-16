@@ -5,6 +5,8 @@ struct PendingRequest: Equatable {
     let text: String
     let source: FilterSource
     let reason: String
+    /// Asked because the action is sensitive (lock, garage, alarm, oven), not because the filter was unsure.
+    var sensitive = false
 }
 
 /// Routes live transcription into wake-word commands, follow-ups and proactive requests.
@@ -47,6 +49,10 @@ struct PendingRequest: Equatable {
         var confirmationAnswerWindow: TimeInterval = 8
         /// The same sentence is asked about at most once in this time.
         var askCooldown: TimeInterval = 60
+        /// Ask before sending sensitive requests that were said with the wake word.
+        /// Sensitive requests from background speech are never sent, whatever this says.
+        var confirmSensitive = true
+        var extraSensitive: Set<String> = []
     }
 
     private static let posix = Locale(identifier: "en_US_POSIX")
@@ -103,7 +109,7 @@ struct PendingRequest: Equatable {
             } else if isFinal, isSubstantial(trimmed) {
                 setMode(.idle)
                 learn(audio)
-                deliver(trimmed, source: .wakeWord)
+                deliverChecked(trimmed, source: .wakeWord)
             }
             return
         case .awaitingConfirmation(let pending, _):
@@ -136,10 +142,16 @@ struct PendingRequest: Equatable {
         switch RequestFilter.checkProactive(command, strict: config.strictFilter, extra: config.extraEntities,
                                               addressees: config.addressees, audio: cue) {
         case .accept(let source, let reason):
+            if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
+                onDecision?("Not sent: \"\(term)\" needs the wake word")
+                return
+            }
             onDecision?("\(source.rawValue): \(reason)")
             deliver(command, source: source)
         case .uncertain(let reason):
-            if config.askWhenUnsure, cue != .far, canAsk(command) {
+            if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
+                onDecision?("Not sent: \"\(term)\" needs the wake word")
+            } else if config.askWhenUnsure, cue != .far, canAsk(command) {
                 ask(PendingRequest(text: command, source: .proactive, reason: reason))
             } else {
                 onDecision?("Background speech filtered (\(reason))")
@@ -202,7 +214,7 @@ struct PendingRequest: Equatable {
                 setMode(.idle)
                 onDecision?("Wake word: command captured")
                 learn(audio)
-                deliver(match.commandText, source: .wakeWord)
+                deliverChecked(match.commandText, source: .wakeWord)
             } else {
                 armCapture()
             }
@@ -228,17 +240,28 @@ struct PendingRequest: Equatable {
         guard accepted else { return false }
         setMode(.idle)
         onDecision?("Follow-up: command captured")
-        deliver(text, source: .followUp)
+        deliverChecked(text, source: .followUp)
         return true
     }
 
     private func ask(_ pending: PendingRequest) {
-        asked.append((normalizedKey(pending.text), Date()))
+        // Sensitive requests are always asked about; only filter doubts use the cooldown.
+        if !pending.sensitive { asked.append((normalizedKey(pending.text), Date())) }
         let deadline = Date().addingTimeInterval(config.confirmationWindow)
         setMode(.awaitingConfirmation(pending, deadline: deadline))
         armTimer(for: deadline)
-        onDecision?("Not sure — asking: \(pending.reason)")
+        onDecision?(pending.sensitive ? "Please confirm: \(pending.reason)" : "Not sure — asking: \(pending.reason)")
         onAskBack?(pending)
+    }
+
+    /// Explicit requests (wake word, follow-up) still ask first when they touch a lock,
+    /// garage, alarm or oven.
+    private func deliverChecked(_ text: String, source: FilterSource) {
+        if config.confirmSensitive, let term = SensitiveActions.match(in: text, extra: config.extraSensitive) {
+            ask(PendingRequest(text: text, source: source, reason: "sensitive action (\(term))", sensitive: true))
+        } else {
+            deliver(text, source: source)
+        }
     }
 
     private func canAsk(_ text: String) -> Bool {
