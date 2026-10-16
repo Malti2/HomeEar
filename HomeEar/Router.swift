@@ -298,7 +298,7 @@ struct PendingRequest: Equatable {
         onDecision?(message)
     }
 
-    private func deadline(of mode: Mode) -> Date? {
+    private func windowEnd(of mode: Mode) -> Date? {
         switch mode {
         case .idle: nil
         case .awaitingCommand(let deadline): deadline
