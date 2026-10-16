@@ -25,6 +25,7 @@ enum FilterDecision {
 ///       unless a polite framing is present  ("ich möchte …")
 ///   −2  starts a subordinate clause         ("wenn du das Licht anmachst …")
 ///   −2  past-tense marker                   ("hat das Licht angemacht")
+///   −2  sounds far from the microphone     (TV, radio, another room)
 ///   −4  addressed to a person               ("Mama, mach das Licht aus"),
 ///       built-in family words plus the household names the user adds
 ///   −3  laughter / non-speech tokens
@@ -42,7 +43,7 @@ struct RequestFilter {
     private static let posix = Locale(identifier: "en_US_POSIX")
 
     static func checkProactive(_ text: String, strict: Bool, extra: Set<String> = [],
-                               addressees: Set<String> = []) -> FilterDecision {
+                               addressees: Set<String> = [], audio: AudioCue = .normal) -> FilterDecision {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let words = value.split(whereSeparator: \.isWhitespace)
         guard value.count >= 12, words.count >= 3, value.count <= 400 else {
@@ -78,6 +79,8 @@ struct RequestFilter {
             score -= 4
         }
         if tokens.contains(where: { anti.contains($0) }) { score -= 3 }
+        // Audio only ever lowers the score: loud speech alone is no reason to forward.
+        if audio == .far { score -= 2 }
 
         let threshold = strict ? 4 : 3
         if score >= threshold {

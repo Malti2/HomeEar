@@ -78,6 +78,10 @@ struct RequestRecord: Identifiable {
     @Published var customKeywords = UserDefaults.standard.string(forKey: "customKeywords") ?? "" {
         didSet { UserDefaults.standard.set(customKeywords, forKey: "customKeywords") }
     }
+    @Published var audioCuesEnabled = UserDefaults.standard.object(forKey: "audioCuesEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(audioCuesEnabled, forKey: "audioCuesEnabled") }
+    }
+    let levels = AudioLevelTracker()
     @Published var householdNames = UserDefaults.standard.string(forKey: "householdNames") ?? "" {
         didSet { UserDefaults.standard.set(householdNames, forKey: "householdNames") }
     }
@@ -113,6 +117,8 @@ struct RequestRecord: Identifiable {
     let updates = UpdateChecker()
 
     init() {
+        router.voiceProfile.referenceSNR = UserDefaults.standard.object(forKey: "voiceReferenceSNR") as? Double
+        router.onVoiceReferenceChanged = { UserDefaults.standard.set($0, forKey: "voiceReferenceSNR") }
         router.onDeliver = { [weak self] text, source in self?.forwardRequest(text: text, source: source) }
         router.onDecision = { [weak self] decision in self?.latestDecision = decision }
         router.onCommandModeChanged = { [weak self] active in
@@ -157,7 +163,9 @@ struct RequestRecord: Identifiable {
         router.config.strictFilter = strictFilter
         router.config.extraEntities = RequestFilter.parseKeywords(customKeywords)
         router.config.addressees = RequestFilter.parseKeywords(householdNames)
-        router.receive(text, isFinal: isFinal)
+        router.config.audioCuesEnabled = audioCuesEnabled
+        let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
+        router.receive(text, isFinal: isFinal, audio: features)
     }
     private func forwardRequest(text: String, source: FilterSource) {
         // Capture the selected destination before suspension: one request, one backend.

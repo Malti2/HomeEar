@@ -26,11 +26,16 @@ import Foundation
         var extraEntities: Set<String> = []
         /// Names of people at home; a request addressed to one is not for HomeEar.
         var addressees: Set<String> = []
+        /// Judge how far from the microphone speech sounded (proactive path only).
+        var audioCuesEnabled = true
     }
 
     private static let posix = Locale(identifier: "en_US_POSIX")
 
     var config = Config()
+    /// Learned from deliberate "Hey Poke" commands; persisted by the app.
+    var voiceProfile = VoiceProfile()
+    var onVoiceReferenceChanged: ((Double) -> Void)?
 
     /// (text, source) — the app forwards this to Poke.
     var onDeliver: ((String, FilterSource) -> Void)?
@@ -43,7 +48,7 @@ import Foundation
     private var mode: Mode = .idle
     private var deliveries: [(key: String, at: Date)] = []
 
-    func receive(_ text: String, isFinal: Bool) {
+    func receive(_ text: String, isFinal: Bool, audio: AudioFeatures? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -56,7 +61,7 @@ import Foundation
         // 1. Wake word, on partials and finals alike (partials arm the
         //    capture; only finals deliver, so we act on stable text).
         if config.wakeWordEnabled, let match = WakeWordDetector.detect(in: trimmed) {
-            handleWakeWord(match, isFinal: isFinal)
+            handleWakeWord(match, isFinal: isFinal, audio: audio)
             return
         }
 
@@ -68,6 +73,7 @@ import Foundation
                 onDecision?("Wake word cancelled")
             } else if isFinal, isSubstantial(trimmed) {
                 setMode(.idle)
+                learn(audio)
                 deliver(trimmed, source: .wakeWord)
             }
             return
@@ -79,8 +85,9 @@ import Foundation
         // A leftover "hey poke" (wake word disabled, said out of habit) is
         // stripped so Poke gets the command, not the trigger phrase.
         let command = WakeWordDetector.stripLeadingWakeWord(from: trimmed) ?? trimmed
+        let cue: AudioCue = config.audioCuesEnabled ? audio.map { voiceProfile.cue(forSNR: $0.snr) } ?? .normal : .normal
         switch RequestFilter.checkProactive(command, strict: config.strictFilter, extra: config.extraEntities,
-                                              addressees: config.addressees) {
+                                              addressees: config.addressees, audio: cue) {
         case .accept(let source, let reason):
             onDecision?("\(source.rawValue): \(reason)")
             deliver(command, source: source)
@@ -97,7 +104,7 @@ import Foundation
 
     // MARK: - private
 
-    private func handleWakeWord(_ match: WakeWordDetector.Match, isFinal: Bool) {
+    private func handleWakeWord(_ match: WakeWordDetector.Match, isFinal: Bool, audio: AudioFeatures?) {
         if isCancel(match.commandText) {
             // "Hey Poke, abbrechen" — never forward the cancel word itself.
             if isFinal {
@@ -109,6 +116,7 @@ import Foundation
             if isFinal {
                 setMode(.idle)
                 onDecision?("Wake word: command captured")
+                learn(audio)
                 deliver(match.commandText, source: .wakeWord)
             } else {
                 armCapture()
@@ -118,6 +126,12 @@ import Foundation
             armCapture()
             onDecision?("Wake word heard — listening for command…")
         }
+    }
+
+    private func learn(_ audio: AudioFeatures?) {
+        guard config.audioCuesEnabled, let audio, audio.snr > 0 else { return }
+        voiceProfile.learn(snr: audio.snr)
+        if let reference = voiceProfile.referenceSNR { onVoiceReferenceChanged?(reference) }
     }
 
     private func armCapture() {

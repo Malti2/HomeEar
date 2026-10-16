@@ -49,6 +49,7 @@ import Speech
                 try await request.downloadAndInstall()
             }
         } catch { throw Failure.model }
+        state?.levels.reset()
         let analyzer = SpeechAnalyzer(modules: [transcriber])
         self.analyzer = analyzer
         guard let target = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else { throw Failure.format }
@@ -75,7 +76,8 @@ import Speech
             guard let converter = AVAudioConverter(from: source, to: target) else { throw Failure.format }
             // The callback must be formed outside AppleSpeechEngine's MainActor
             // isolation: CoreAudio invokes it on its realtime service queue.
-            let sink = AudioTapSink(converter: converter, target: target, continuation: builder)
+            let sink = AudioTapSink(converter: converter, target: target, continuation: builder,
+                                    levels: state?.levels ?? AudioLevelTracker())
             sink.install(on: input, format: source)
             tapInstalled = true
             engine.prepare()
@@ -119,12 +121,14 @@ private final class AudioTapSink: @unchecked Sendable {
     private let converter: AVAudioConverter
     private let target: AVAudioFormat
     private let continuation: AsyncStream<AnalyzerInput>.Continuation
+    private let levels: AudioLevelTracker
 
     init(converter: AVAudioConverter, target: AVAudioFormat,
-         continuation: AsyncStream<AnalyzerInput>.Continuation) {
+         continuation: AsyncStream<AnalyzerInput>.Continuation, levels: AudioLevelTracker) {
         self.converter = converter
         self.target = target
         self.continuation = continuation
+        self.levels = levels
     }
 
     func install(on input: AVAudioInputNode, format source: AVAudioFormat) {
@@ -136,6 +140,11 @@ private final class AudioTapSink: @unchecked Sendable {
     }
 
     private func consume(_ buffer: AVAudioPCMBuffer, sourceRate: Double) {
+        // Loudness only (a dB value per buffer); no audio leaves this function but the converted stream.
+        if let channel = buffer.floatChannelData?[0],
+           let db = AudioLevelTracker.decibels(of: UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength))) {
+            levels.record(db: db, at: ProcessInfo.processInfo.systemUptime)
+        }
         let ratio = target.sampleRate / sourceRate
         let capacity = AVAudioFrameCount(ceil(Double(buffer.frameLength) * ratio)) + 64
         guard let output = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
