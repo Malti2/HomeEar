@@ -22,7 +22,11 @@ import Foundation
         /// Identical requests within this window are sent only once.
         var duplicateWindow: TimeInterval = 60
         var maxHistory = 10
+        /// User-defined smart-home words that count as entities in the proactive filter.
+        var extraEntities: Set<String> = []
     }
+
+    private static let posix = Locale(identifier: "en_US_POSIX")
 
     var config = Config()
 
@@ -57,7 +61,10 @@ import Foundation
         // 2. Command capture after a lone "Hey Poke": finals go straight
         //    through, no proactive filter — the user explicitly invoked us.
         if isAwaiting(mode) {
-            if isFinal, isSubstantial(trimmed) {
+            if isFinal, isCancel(trimmed) {
+                setMode(.idle)
+                onDecision?("Wake word cancelled")
+            } else if isFinal, isSubstantial(trimmed) {
                 setMode(.idle)
                 deliver(trimmed, source: .wakeWord)
             }
@@ -70,7 +77,7 @@ import Foundation
         // A leftover "hey poke" (wake word disabled, said out of habit) is
         // stripped so Poke gets the command, not the trigger phrase.
         let command = WakeWordDetector.stripLeadingWakeWord(from: trimmed) ?? trimmed
-        switch RequestFilter.checkProactive(command, strict: config.strictFilter) {
+        switch RequestFilter.checkProactive(command, strict: config.strictFilter, extra: config.extraEntities) {
         case .accept(let source, let reason):
             onDecision?("\(source.rawValue): \(reason)")
             deliver(command, source: source)
@@ -88,7 +95,13 @@ import Foundation
     // MARK: - private
 
     private func handleWakeWord(_ match: WakeWordDetector.Match, isFinal: Bool) {
-        if isSubstantial(match.commandText) {
+        if isCancel(match.commandText) {
+            // "Hey Poke, abbrechen" — never forward the cancel word itself.
+            if isFinal {
+                setMode(.idle)
+                onDecision?("Wake word cancelled")
+            }
+        } else if isSubstantial(match.commandText) {
             // "Hey Poke, mach das Licht an" — the command is right there.
             if isFinal {
                 setMode(.idle)
@@ -133,6 +146,15 @@ import Foundation
         if changed { onCommandModeChanged?(isAwaiting(mode)) }
     }
 
+    private static let cancelPhrases: Set<String> = [
+        "abbrechen", "vergiss es", "vergiss das", "schon gut", "lass gut sein",
+        "cancel", "never mind", "nevermind", "forget it",
+    ]
+
+    private func isCancel(_ text: String) -> Bool {
+        Self.cancelPhrases.contains(normalizedKey(text))
+    }
+
     private func isSubstantial(_ text: String) -> Bool {
         // Deliberately lenient: the user explicitly invoked us, so even a
         // single word ("Hey Poke, stopp") is a command worth forwarding.
@@ -156,7 +178,7 @@ import Foundation
     }
 
     private func normalizedKey(_ text: String) -> String {
-        let lower = text.lowercased(with: Locale(identifier: "en_US_POSIX"))
+        let lower = text.lowercased(with: Self.posix)
         return lower.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).joined(separator: " ")
     }
 }

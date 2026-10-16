@@ -19,18 +19,25 @@ enum FilterDecision {
 ///   +2  verb within the first three tokens ("bitte mach das Licht an")
 ///   +2  mentions a smart-home entity        ("… das Licht …")
 ///   +2  polite request pattern              ("kannst du …", "please …")
+///   +2  infinitive command, no imperative   ("das Licht bitte anmachen")
 ///   +1  question about a known entity       ("wie wird das Wetter?")
+///   −2  starts with a subject pronoun       ("er will das Licht anmachen"),
+///       unless a polite framing is present  ("ich möchte …")
 ///   −3  laughter / non-speech tokens
 ///
 /// Strict mode needs 4 points, relaxed 3. Length gates stay: 12–400 chars,
 /// at least 3 words. Verb matching is token-exact on purpose: "mach" scores,
 /// "macht" ("er macht das Licht an" — talking *about* someone) does not.
+/// Entities are matched per token: exactly, or as the tail of a German
+/// compound ("wohnzimmerlampe" → "lampe"). Short entities ("raum", "tür")
+/// never match inside longer words, otherwise "natürlich" or "traum" would
+/// look like smart-home talk. Users can add their own entities (`extra`).
 /// A leading wake phrase is stripped before scoring so "Hey Poke, mach …"
 /// is judged on the command itself.
 struct RequestFilter {
     private static let posix = Locale(identifier: "en_US_POSIX")
 
-    static func checkProactive(_ text: String, strict: Bool) -> FilterDecision {
+    static func checkProactive(_ text: String, strict: Bool, extra: Set<String> = []) -> FilterDecision {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let words = value.split(whereSeparator: \.isWhitespace)
         guard value.count >= 12, words.count >= 3, value.count <= 400 else {
@@ -38,7 +45,8 @@ struct RequestFilter {
         }
         let command = WakeWordDetector.stripLeadingWakeWord(from: value) ?? value
         let lower = command.lowercased(with: posix)
-        let tokens = lower.split(whereSeparator: \.isWhitespace).map(String.init)
+        // Punctuation splits tokens ("licht, bitte"); apostrophes stay ("what's").
+        let tokens = lower.split(whereSeparator: isSeparator).map(String.init)
 
         var score = 0
         var hits: [String] = []
@@ -47,12 +55,17 @@ struct RequestFilter {
         } else if tokens.prefix(3).contains(where: { verbs.contains($0) }) {
             score += 2; hits.append("verb")
         }
-        if entities.contains(where: { lower.contains($0) }) { score += 2; hits.append("entity") }
-        if polite.contains(where: { lower.contains($0) }) { score += 2; hits.append("polite") }
-        if questionStarts.contains(where: { lower.hasPrefix($0) }),
-           entities.contains(where: { lower.contains($0) }) {
+        let hasEntity = mentionsEntity(tokens, extra: extra)
+        let isPolite = polite.contains(where: { lower.contains($0) })
+        if !hits.contains("verb"), tokens.contains(where: { infinitives.contains($0) }) {
+            score += 2; hits.append("infinitive")
+        }
+        if hasEntity { score += 2; hits.append("entity") }
+        if isPolite { score += 2; hits.append("polite") }
+        if hasEntity, questionStarts.contains(where: { lower.hasPrefix($0) }) {
             score += 1; hits.append("question")
         }
+        if !isPolite, let first = tokens.first, subjects.contains(first) { score -= 2 }
         if tokens.contains(where: { anti.contains($0) }) { score -= 3 }
 
         let threshold = strict ? 4 : 3
@@ -60,6 +73,30 @@ struct RequestFilter {
             return .accept(source: .proactive, reason: "Score \(score) (\(hits.joined(separator: "+")))")
         }
         return .reject(reason: "Background speech filtered (score \(score))")
+    }
+
+    /// Splits a user-entered keyword list ("ventilator, kamin garage") into
+    /// lowercase single tokens.
+    static func parseKeywords(_ text: String) -> Set<String> {
+        Set(text.lowercased(with: posix)
+            .split(whereSeparator: { !($0.isLetter || $0.isNumber) })
+            .map(String.init)
+            .filter { $0.count >= 2 })
+    }
+
+    private static func isSeparator(_ character: Character) -> Bool {
+        !(character.isLetter || character.isNumber || character == "'" || character == "’")
+    }
+
+    private static func mentionsEntity(_ tokens: [String], extra: Set<String>) -> Bool {
+        tokens.contains { token in
+            if entities.contains(token) || extra.contains(token) { return true }
+            // Compound tail, only for words long enough to be unambiguous.
+            func tail(_ word: String) -> Bool {
+                word.count >= 5 && token.count > word.count && token.hasSuffix(word)
+            }
+            return entities.contains(where: tail) || extra.contains(where: tail)
+        }
     }
 
     // MARK: - lexicons
@@ -73,9 +110,26 @@ struct RequestFilter {
         "dreh", "drehe", "erhöh", "erhöhe", "senk", "senke",
         "aktivier", "aktiviere", "deaktivier", "deaktiviere",
         "fahr", "fahre", "leg", "lege", "lies", "sag", "sage",
-        "erzähl", "erzähle", "weck",
+        "erzähl", "erzähle", "weck", "lösch", "lösche", "wechsel", "wechsle",
+        "pausier", "pausiere", "verdunkel", "verdunkle", "heiz", "heize",
+        "kühl", "kühle",
         "turn", "switch", "set", "dim", "open", "close",
         "play", "lock", "unlock", "raise", "lower", "remind",
+        "stop", "pause", "increase", "decrease", "activate", "deactivate", "show",
+    ]
+
+    /// Infinitive commands ("das Licht bitte anmachen"), common in spoken German.
+    private static let infinitives: Set<String> = [
+        "anmachen", "ausmachen", "einschalten", "ausschalten", "anschalten",
+        "abschalten", "aufmachen", "zumachen", "öffnen", "schließen",
+        "dimmen", "starten", "stoppen", "pausieren", "abspielen",
+        "hochfahren", "runterfahren", "herunterfahren", "aufdrehen",
+        "runterdrehen", "herunterdrehen", "ausstellen", "anstellen",
+    ]
+
+    /// Sentence-initial subjects that usually mean "talking about", not "asking".
+    private static let subjects: Set<String> = [
+        "er", "sie", "es", "wir", "ihr", "ich", "he", "she", "they", "we", "i",
     ]
 
     /// Smart-home and everyday entities that make an utterance command-like.
@@ -94,6 +148,10 @@ struct RequestFilter {
         "scene", "music", "volume", "weather", "calendar", "appointment",
         "reminder", "alarm", "door", "window", "warmer", "cooler",
         "brighter", "dimmer",
+        "badezimmer", "garage", "garagentor", "rollo", "rollos", "rolladen",
+        "ventilator", "kamin", "klimaanlage", "lüftung", "radio", "lautsprecher",
+        "alarmanlage", "heizkörper", "stehlampe", "balkon", "terrasse", "keller",
+        "fan", "speaker", "doorbell",
     ]
 
     /// Polite request framings.

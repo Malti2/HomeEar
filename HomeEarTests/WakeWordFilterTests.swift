@@ -100,4 +100,72 @@ final class FilterTests: XCTestCase {
     func testStripsWakeWordBeforeScoring() {
         assertAccept("hey poke mach das licht an", strict: true)
     }
+
+    func testAcceptsInfinitiveCommands() {
+        assertAccept("das licht im flur anmachen", strict: true)
+        assertAccept("die heizung im bad bitte ausschalten", strict: true)
+    }
+
+    func testPunctuationDoesNotHideEntities() {
+        assertAccept("mach bitte das licht, schnell", strict: true)
+    }
+
+    func testShortEntitiesDoNotMatchInsideWords() {
+        // "natürlich" contains "tür", "traum" contains "raum", "fuhr" contains "uhr".
+        assertReject("natürlich habe ich das gestern gesagt", strict: false)
+        assertReject("ich hatte einen komischen traum gestern", strict: false)
+        assertReject("wir fuhr gestern nach hause zurück", strict: false)
+    }
+
+    func testCompoundEntitiesMatchByTail() {
+        assertAccept("mach die wohnzimmerlampe an", strict: true)
+        assertAccept("schalte die stehlampe im flur aus", strict: true)
+    }
+
+    func testNarrativeSubjectIsPenalised() {
+        assertReject("er will dass ich das licht anmachen", strict: true)
+        assertReject("ich habe gestern das licht anmachen müssen", strict: true)
+    }
+
+    func testPoliteFirstPersonStillAccepted() {
+        assertAccept("ich möchte das licht heller haben", strict: true)
+    }
+
+    func testCustomKeywords() {
+        XCTAssertEqual(RequestFilter.parseKeywords("Ventilator, Kamin  garage;x"), ["ventilator", "kamin", "garage"])
+        let text = "mach den pizzaofen an"
+        guard case .reject = RequestFilter.checkProactive(text, strict: true) else {
+            return XCTFail("should reject without keyword")
+        }
+        guard case .accept = RequestFilter.checkProactive(text, strict: true, extra: ["pizzaofen"]) else {
+            return XCTFail("should accept with keyword")
+        }
+    }
+}
+
+final class QuietHoursTests: XCTestCase {
+    private func date(hour: Int) -> (Date, Calendar) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let date = calendar.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: hour, minute: 30))!
+        return (date, calendar)
+    }
+
+    func testWrapsPastMidnight() {
+        let quiet = QuietHours(startHour: 23, endHour: 7)
+        for hour in [23, 0, 3, 6] { let (d, c) = date(hour: hour); XCTAssertTrue(quiet.contains(d, calendar: c), "\(hour)") }
+        for hour in [7, 12, 22] { let (d, c) = date(hour: hour); XCTAssertFalse(quiet.contains(d, calendar: c), "\(hour)") }
+    }
+
+    func testSameDayWindow() {
+        let quiet = QuietHours(startHour: 13, endHour: 15)
+        let (inside, c1) = date(hour: 14), (outside, c2) = date(hour: 15)
+        XCTAssertTrue(quiet.contains(inside, calendar: c1))
+        XCTAssertFalse(quiet.contains(outside, calendar: c2))
+    }
+
+    func testEqualBoundsMeanNoWindow() {
+        let (d, c) = date(hour: 3)
+        XCTAssertFalse(QuietHours(startHour: 5, endHour: 5).contains(d, calendar: c))
+    }
 }

@@ -48,6 +48,13 @@ enum KeyStore {
     }
 }
 
+struct RequestRecord: Identifiable {
+    let id = UUID()
+    let text: String
+    let source: FilterSource
+    let date: Date
+}
+
 @MainActor final class AppState: ObservableObject {
     @Published var microphoneOn = false
     @Published var speechState = "Not started"
@@ -68,6 +75,23 @@ enum KeyStore {
     @Published var proactiveEnabled = UserDefaults.standard.object(forKey: "proactiveEnabled") as? Bool ?? true {
         didSet { UserDefaults.standard.set(proactiveEnabled, forKey: "proactiveEnabled") }
     }
+    @Published var customKeywords = UserDefaults.standard.string(forKey: "customKeywords") ?? "" {
+        didSet { UserDefaults.standard.set(customKeywords, forKey: "customKeywords") }
+    }
+    @Published var quietHoursEnabled = UserDefaults.standard.bool(forKey: "quietHoursEnabled") {
+        didSet { UserDefaults.standard.set(quietHoursEnabled, forKey: "quietHoursEnabled"); evaluateQuietHours() }
+    }
+    @Published var quietStart = UserDefaults.standard.object(forKey: "quietStart") as? Int ?? 23 {
+        didSet { UserDefaults.standard.set(quietStart, forKey: "quietStart"); evaluateQuietHours() }
+    }
+    @Published var quietEnd = UserDefaults.standard.object(forKey: "quietEnd") as? Int ?? 7 {
+        didSet { UserDefaults.standard.set(quietEnd, forKey: "quietEnd"); evaluateQuietHours() }
+    }
+    /// Last requests this session, newest first. Memory only, never written to disk.
+    @Published var recent: [RequestRecord] = []
+    private var pausedByQuietHours = false
+    private var wasQuiet = false
+    private var quietTimer: Timer?
     let router = UtteranceRouter()
     @Published var selectedBackend = UserDefaults.standard.string(forKey: "backend") ?? "poke" {
         didSet { UserDefaults.standard.set(selectedBackend, forKey: "backend") }
@@ -92,6 +116,11 @@ enum KeyStore {
             guard let self else { return }
             self.speechState = active ? "Listening for command…" : (self.microphoneOn ? "Listening on device" : "Paused")
         }
+        // Launching inside a quiet window must not pause a mic the user starts by hand.
+        wasQuiet = quietHoursEnabled && QuietHours(startHour: quietStart, endHour: quietEnd).contains(Date())
+        quietTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.evaluateQuietHours() }
+        }
         Task { @MainActor in
             do { try mcp.start(); if completedSetup && selectedBackend == "poke" { tunnel.start() } }
             catch { ttsState = "Local tool unavailable: \(error.localizedDescription)" }
@@ -99,6 +128,7 @@ enum KeyStore {
     }
     func start() {
         guard !microphoneOn else { return }
+        pausedByQuietHours = false
         Task {
             do {
                 try await speech.start(language: language)
@@ -111,6 +141,7 @@ enum KeyStore {
         }
     }
     func stop() {
+        pausedByQuietHours = false
         speech.stop()
         router.reset()
         microphoneOn = false
@@ -121,12 +152,16 @@ enum KeyStore {
         router.config.wakeWordEnabled = wakeWordEnabled
         router.config.proactiveEnabled = proactiveEnabled
         router.config.strictFilter = strictFilter
+        router.config.extraEntities = RequestFilter.parseKeywords(customKeywords)
         router.receive(text, isFinal: isFinal)
     }
     private func forwardRequest(text: String, source: FilterSource) {
         // Capture the selected destination before suspension: one request, one backend.
         let destination = selectedBackend
         guard completedSetup || destination == "home_assistant" else { return }
+        recent.removeAll { $0.text == text }
+        recent.insert(RequestRecord(text: text, source: source, date: Date()), at: 0)
+        if recent.count > 5 { recent.removeLast(recent.count - 5) }
         if destination == "home_assistant" {
             guard !haRequestInFlight else {
                 latestDecision = "Request not sent: Home Assistant is still processing the previous request"
@@ -164,6 +199,23 @@ enum KeyStore {
                     latestDecision = "\(source.rawValue) → sent to Poke"
                 } catch { apiState = "Forwarding unavailable: \(error.localizedDescription)" }
             }
+        }
+    }
+    /// Sends a previous request again on the currently selected backend.
+    func resend(_ record: RequestRecord) {
+        forwardRequest(text: record.text, source: record.source)
+    }
+    /// Pauses the microphone when a quiet window begins and resumes it when
+    /// the window ends, but only if quiet hours did the pausing.
+    func evaluateQuietHours(now: Date = Date()) {
+        let quiet = quietHoursEnabled && QuietHours(startHour: quietStart, endHour: quietEnd).contains(now)
+        defer { wasQuiet = quiet }
+        if quiet && !wasQuiet && microphoneOn {
+            stop()
+            pausedByQuietHours = true
+            speechState = "Paused for quiet hours"
+        } else if !quiet && wasQuiet && pausedByQuietHours {
+            start()
         }
     }
     func saveHAToken(_ token: String) -> Bool {

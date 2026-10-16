@@ -81,6 +81,20 @@ struct PanelView: View {
                 Text(state.haResponse).font(.callout).lineLimit(4)
                 Button("Read reply (pauses mic)") { state.speakHAResponse() }
             }
+            if !state.recent.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("RECENT REQUESTS").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    ForEach(state.recent.prefix(3)) { record in
+                        HStack(spacing: 8) {
+                            Text(record.text).font(.caption).lineLimit(1).truncationMode(.tail)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Button { state.resend(record) } label: { Image(systemName: "arrow.clockwise") }
+                                .buttonStyle(.borderless)
+                                .help("Send this request again")
+                        }
+                    }
+                }
+            }
             if !state.microphoneOn && state.speechState != "Not started" && state.speechState != "Paused" {
                 Text(state.speechState).font(.caption).foregroundStyle(.secondary)
             }
@@ -166,6 +180,9 @@ struct HomeEarSettingsView: View {
                 Toggle("Hey Poke wake word", isOn: $state.wakeWordEnabled)
                 Toggle("Proactive requests", isOn: $state.proactiveEnabled)
                 Toggle("Strict request filter", isOn: $state.strictFilter)
+                TextField("Extra smart-home words (comma separated)", text: $state.customKeywords)
+                Text("Words like ventilator or kamin make a sentence count as a home request in the proactive filter.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text("Apple recognition runs on this Mac in fast live mode. Only finalized requests are sent to your selected backend.")
                     .font(.caption).foregroundStyle(.secondary)
                 LabeledContent("Status", value: state.speechState)
@@ -199,6 +216,17 @@ struct HomeEarSettingsView: View {
             }
             Section("General") {
                 Toggle("Start at login", isOn: Binding(get: { state.startAtLogin }, set: { state.setLogin($0) }))
+                Toggle("Pause microphone during quiet hours", isOn: $state.quietHoursEnabled)
+                if state.quietHoursEnabled {
+                    Picker("From", selection: $state.quietStart) {
+                        ForEach(0..<24, id: \.self) { Text($0 < 10 ? "0\($0):00" : "\($0):00").tag($0) }
+                    }
+                    Picker("Until", selection: $state.quietEnd) {
+                        ForEach(0..<24, id: \.self) { Text($0 < 10 ? "0\($0):00" : "\($0):00").tag($0) }
+                    }
+                    Text("The microphone pauses at the start and resumes at the end, unless you paused it yourself.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Section("Update") {
                 UpdateSettingsView(updates: state.updates)

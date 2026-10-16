@@ -6,11 +6,13 @@ final class RouterTests: XCTestCase {
     /// and returns everything it delivered.
     private func driveRouter(_ inputs: [(String, Bool)],
                             wakeWordEnabled: Bool = true,
-                            proactiveEnabled: Bool = true) async -> [(String, FilterSource)] {
+                            proactiveEnabled: Bool = true,
+                            extraEntities: Set<String> = []) async -> [(String, FilterSource)] {
         await MainActor.run {
             let router = UtteranceRouter()
             router.config.wakeWordEnabled = wakeWordEnabled
             router.config.proactiveEnabled = proactiveEnabled
+            router.config.extraEntities = extraEntities
             var delivered: [(String, FilterSource)] = []
             router.onDeliver = { delivered.append(($0, $1)) }
             for (text, isFinal) in inputs {
@@ -75,5 +77,27 @@ final class RouterTests: XCTestCase {
             proactiveEnabled: false
         )
         XCTAssertTrue(delivered.isEmpty)
+    }
+
+    func testCancelWordDropsPendingCapture() async {
+        let delivered = await driveRouter([
+            ("hey poke", true),
+            ("abbrechen", true),
+            ("mach das licht an", true),
+        ])
+        // The cancel word is not forwarded, and capture is over: the next line is
+        // judged by the proactive filter, not delivered as a wake-word command.
+        XCTAssertEqual(delivered.count, 1)
+        XCTAssertEqual(delivered[0].1, .proactive)
+    }
+
+    func testCancelInSameUtteranceIsNotForwarded() async {
+        let delivered = await driveRouter([("hey poke vergiss es", true)])
+        XCTAssertTrue(delivered.isEmpty)
+    }
+
+    func testExtraEntitiesReachFilter() async {
+        let delivered = await driveRouter([("mach den pizzaofen an", true)], extraEntities: ["pizzaofen"])
+        XCTAssertEqual(delivered.count, 1)
     }
 }
