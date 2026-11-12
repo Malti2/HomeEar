@@ -1,0 +1,106 @@
+name: Build notarized release (manual, artifacts only)
+# Developer ID signing and Apple notarization for a release candidate. Manual and never
+# publishes: it produces a stapled DMG and ZIP as workflow artifacts for review, like the
+# development build. UNTESTED until the secrets below exist; see docs/RELEASING.md.
+on:
+  workflow_dispatch:
+jobs:
+  notarize:
+    runs-on: macos-26
+    permissions:
+      contents: read
+    env:
+      DEVELOPER_ID_CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12_BASE64 }}
+      DEVELOPER_ID_CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that all signing secrets are present
+        run: |
+          set -euo pipefail
+          for NAME in DEVELOPER_ID_CERT_P12_BASE64 DEVELOPER_ID_CERT_PASSWORD APPLE_ID APPLE_TEAM_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            test -n "${!NAME}" || { echo "Missing repository secret: $NAME"; exit 1; }
+          done
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Bundle pinned Poke runtime
+        run: bash scripts/bundle-runtime.sh
+      - name: Import the Developer ID certificate into a temporary keychain
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
+          printf '%s' "$DEVELOPER_ID_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -lut 3600 build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import "$RUNNER_TEMP/cert.p12" -k build.keychain -P "$DEVELOPER_ID_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          security list-keychains -d user -s build.keychain login.keychain
+          rm "$RUNNER_TEMP/cert.p12"
+          IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep 'Developer ID Application' | head -1 | sed -E 's/.*"(.*)".*/\1/')
+          test -n "$IDENTITY"
+          echo "IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+      - name: Generate project and build
+        run: |
+          set -euo pipefail
+          xcodegen generate
+          xcodebuild -project HomeEar.xcodeproj -scheme HomeEarTests -destination 'platform=macOS' ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO test 2>&1 | tail -5
+          xcodebuild -project HomeEar.xcodeproj -scheme HomeEar -configuration Release -arch arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build 2>&1 | grep -E 'error:|BUILD (SUCCEEDED|FAILED)'
+      - name: Sign inside-out with the hardened runtime
+        run: |
+          set -euo pipefail
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
+          test -n "$APP"
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          SIGN=(codesign --force --options runtime --timestamp --sign "$IDENTITY")
+          # Bundled Node.js first, with the entitlements V8 needs.
+          "${SIGN[@]}" --entitlements Signing/node.entitlements --identifier net.homeear.runtime.node "$APP/Contents/Resources/Runtime/node"
+          # Sparkle: helpers and XPC services before the framework that contains them.
+          SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+          find "$SPARKLE" \( -name '*.xpc' -o -name '*.app' -o -name 'Autoupdate' -o -name 'Updater' \) -print0 | sort -rz | xargs -0 -n1 "${SIGN[@]}"
+          "${SIGN[@]}" "$SPARKLE"
+          # The app last, with its own entitlements (microphone).
+          "${SIGN[@]}" --entitlements HomeEar/HomeEar.entitlements --identifier net.homeear.HomeEar "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv --verbose=4 "$APP" 2>&1 | grep -E 'flags|Authority|Timestamp'
+      - name: Notarize and staple
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "$APP" dist/notarize-upload.zip
+          xcrun notarytool submit dist/notarize-upload.zip --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait --output-format json | tee dist/notarytool.json
+          test "$(python3 -c 'import json;print(json.load(open("dist/notarytool.json"))["status"])')" = Accepted
+          xcrun stapler staple "$APP"
+          xcrun stapler validate "$APP"
+          spctl --assess --type execute --verbose=4 "$APP"
+          rm dist/notarize-upload.zip
+      - name: Package the stapled app
+        run: |
+          set -euo pipefail
+          mkdir -p dist/dmg-root
+          ditto "$APP" dist/dmg-root/HomeEar.app
+          ln -s /Applications dist/dmg-root/Applications
+          for ATTEMPT in 1 2 3; do
+            if hdiutil create -volname HomeEar -srcfolder dist/dmg-root -ov -format UDZO dist/HomeEar.dmg && hdiutil verify dist/HomeEar.dmg; then break; fi
+            test "$ATTEMPT" -lt 3 || exit 1
+            sleep 5
+          done
+          ditto -c -k --sequesterRsrc --keepParent "$APP" dist/HomeEar.zip
+          shasum -a 256 dist/HomeEar.zip dist/HomeEar.dmg > dist/SHA256SUMS.txt
+          cat dist/SHA256SUMS.txt
+      - name: Remove the temporary keychain
+        if: always()
+        run: security delete-keychain build.keychain || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HomeEar-notarized
+          path: |
+            dist/HomeEar.zip
+            dist/HomeEar.dmg
+            dist/SHA256SUMS.txt
+            dist/notarytool.json
+          if-no-files-found: error
+          retention-days: 7
