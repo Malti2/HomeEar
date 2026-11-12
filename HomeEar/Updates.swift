@@ -3,7 +3,16 @@ import AppKit
 import Combine
 import Sparkle
 
-enum UpdateChannel: String, CaseIterable { case stable, beta }
+enum UpdateChannel: String, CaseIterable {
+    case stable, beta
+
+    var title: String {
+        switch self {
+        case .stable: String(localized: "Stable")
+        case .beta: String(localized: "Beta")
+        }
+    }
+}
 struct GitHubUpdateRelease: Decodable {
     struct Asset: Decodable { let name: String; let browser_download_url: String }
     let draft: Bool
@@ -16,9 +25,9 @@ enum ReleaseDiscovery {
         case missingFeed, invalidFeed, unavailable(Int)
         var errorDescription: String? {
             switch self {
-            case .missingFeed: "Release is missing its signed update feed."
-            case .invalidFeed: "Release has an invalid update feed address."
-            case .unavailable(let code): "GitHub release lookup failed (HTTP \(code))."
+            case .missingFeed: String(localized: "Release is missing its signed update feed.")
+            case .invalidFeed: String(localized: "Release has an invalid update feed address.")
+            case .unavailable(let code): String(localized: "GitHub release lookup failed (HTTP \(code)).")
             }
         }
     }
@@ -35,7 +44,7 @@ enum ReleaseDiscovery {
 
 /// GitHub chooses a channel; Sparkle still verifies the signed feed and archive.
 @MainActor final class UpdateChecker: NSObject, ObservableObject, @preconcurrency SPUUpdaterDelegate {
-    @Published private(set) var status = "Choose a channel and check for updates"
+    @Published private(set) var status = String(localized: "Choose a channel and check for updates")
     @Published private(set) var canCheckForUpdates = true
     @Published private(set) var automaticallyChecks = UserDefaults.standard.bool(forKey: "HomeEarAutomaticUpdates")
     @Published private(set) var channel = UpdateChannel(rawValue: UserDefaults.standard.string(forKey: "HomeEarUpdateChannel") ?? "stable") ?? .stable
@@ -57,7 +66,7 @@ enum ReleaseDiscovery {
         channel = value
         generation += 1
         resolvedFeed = nil
-        status = "\(value == .stable ? "Stable" : "Beta") selected; check for updates"
+        status = String(localized: "\(value.title) selected; check for updates")
         UserDefaults.standard.set(value.rawValue, forKey: "HomeEarUpdateChannel")
     }
     func check() {
@@ -66,7 +75,7 @@ enum ReleaseDiscovery {
         let currentGeneration = generation
         checking = true
         canCheckForUpdates = false
-        status = "Checking \(selected.rawValue) releases..."
+        status = String(localized: "Checking \(selected.title) releases...")
         Task {
             do {
                 var request = URLRequest(url: URL(string: "https://api.github.com/repos/Malti2/HomeEar/releases?per_page=100")!)
@@ -77,7 +86,7 @@ enum ReleaseDiscovery {
                 guard http.statusCode == 200 else { throw ReleaseDiscovery.Failure.unavailable(http.statusCode) }
                 guard currentGeneration == generation else { finish(); return }
                 guard let feed = try ReleaseDiscovery.feed(from: data, channel: selected) else {
-                    status = "No \(selected.rawValue) release is available yet"
+                    status = String(localized: "No \(selected.title) release is available yet")
                     finish()
                     return
                 }
@@ -87,28 +96,28 @@ enum ReleaseDiscovery {
                     started = true
                 }
                 guard controller.updater.canCheckForUpdates else {
-                    status = "Updater is not ready; try again later"
+                    status = String(localized: "Updater is not ready; try again later")
                     finish()
                     return
                 }
-                status = "Verifying \(selected.rawValue) update information..."
+                status = String(localized: "Verifying \(selected.title) update information...")
                 controller.checkForUpdates(nil)
             } catch {
-                status = "Update check failed: \(error.localizedDescription)"
+                status = String(localized: "Update check failed: \(error.localizedDescription)")
                 finish()
             }
         }
     }
     func feedURLString(for updater: SPUUpdater) -> String? { resolvedFeed?.absoluteString }
     func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
-        status = "No newer \(channel.rawValue) version is available"
+        status = String(localized: "No newer \(channel.title) version is available")
     }
     func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
-        status = "A \(channel.rawValue) update is available; review before installing"
+        status = String(localized: "A \(channel.title) update is available; review before installing")
     }
     func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
         if let error, (error as NSError).code != 1001 {
-            status = "Update check failed: \(error.localizedDescription)"
+            status = String(localized: "Update check failed: \(error.localizedDescription)")
         }
         finish()
     }

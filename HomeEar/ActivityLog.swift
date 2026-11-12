@@ -6,12 +6,12 @@ enum ActivityOutcome: String {
 
     var label: String {
         switch self {
-        case .sent: "Sent"
-        case .failed: "Failed"
-        case .filtered: "Not sent"
-        case .asked: "Asked"
-        case .cancelled: "Discarded"
-        case .duplicate: "Duplicate"
+        case .sent: String(localized: "Sent")
+        case .failed: String(localized: "Failed")
+        case .filtered: String(localized: "Not sent")
+        case .asked: String(localized: "Asked")
+        case .cancelled: String(localized: "Discarded")
+        case .duplicate: String(localized: "Duplicate")
         }
     }
 }

@@ -58,9 +58,9 @@ struct RequestRecord: Identifiable {
 
 @MainActor final class AppState: ObservableObject {
     @Published var microphoneOn = false
-    @Published var speechState = "Not started"
-    @Published var apiState = "Add a Poke key"
-    @Published var ttsState = "Not connected"
+    @Published var speechState = String(localized: "Not started")
+    @Published var apiState = String(localized: "Add a Poke key")
+    @Published var ttsState = String(localized: "Not connected")
     @Published var latestText = "Nothing heard yet"
     @Published var latestDecision = ""
     @Published var completedSetup = UserDefaults.standard.bool(forKey: "setupComplete")
@@ -180,7 +180,7 @@ struct RequestRecord: Identifiable {
     @Published var haURL = UserDefaults.standard.string(forKey: "haURL") ?? "" {
         didSet { UserDefaults.standard.set(haURL, forKey: "haURL") }
     }
-    @Published var haState = "Not configured"
+    @Published var haState = String(localized: "Not configured")
     @Published var haResponse = ""
     @Published var haTesting = false
     private var haRequestInFlight = false
@@ -202,7 +202,7 @@ struct RequestRecord: Identifiable {
         router.onCommandModeChanged = { [weak self] active in
             guard let self else { return }
             self.capturing = active
-            self.speechState = active ? "Listening for command…" : (self.microphoneOn ? "Listening on device" : "Paused")
+            self.speechState = active ? String(localized: "Listening for command…") : (self.microphoneOn ? String(localized: "Listening on device") : String(localized: "Paused"))
             if active { self.play(.heard) }
         }
         // Launching inside a quiet window must not pause a mic the user starts by hand.
@@ -210,12 +210,12 @@ struct RequestRecord: Identifiable {
         quietTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.evaluateQuietHours() }
         }
-        haVocabularyState = haWords.isEmpty ? "Not imported" : "\(haWords.count) words imported"
+        haVocabularyState = haWords.isEmpty ? String(localized: "Not imported") : String(localized: "\(haWords.count) words imported")
         // Refresh quietly at launch, but only after the user imported once.
         if !haWords.isEmpty { importHAVocabulary(silent: true) }
         Task { @MainActor in
             do { try mcp.start(); if completedSetup && selectedBackend != "home_assistant" { tunnel.start() } }
-            catch { ttsState = "Local tool unavailable: \(error.localizedDescription)" }
+            catch { ttsState = String(localized: "Local tool unavailable: \(error.localizedDescription)") }
         }
     }
     func start() {
@@ -225,10 +225,10 @@ struct RequestRecord: Identifiable {
             do {
                 try await speech.start(language: language)
                 microphoneOn = true
-                speechState = "Listening on device"
+                speechState = String(localized: "Listening on device")
             } catch {
                 microphoneOn = false
-                speechState = "Speech unavailable: \(error.localizedDescription)"
+                speechState = String(localized: "Speech unavailable: \(error.localizedDescription)")
             }
         }
     }
@@ -237,17 +237,17 @@ struct RequestRecord: Identifiable {
         speech.stop()
         router.reset()
         microphoneOn = false
-        speechState = "Paused"
+        speechState = String(localized: "Paused")
     }
     /// Called by VoiceOutput so the microphone input is ignored while we talk.
     func speechDidBegin() {
         echoGuard.began(at: ProcessInfo.processInfo.systemUptime)
-        if ttsState != "Speaking" { ttsStateBeforeSpeaking = ttsState }
-        ttsState = "Speaking"
+        if ttsState != String(localized: "Speaking") { ttsStateBeforeSpeaking = ttsState }
+        ttsState = String(localized: "Speaking")
     }
     func speechDidEnd(expectsAnswer: Bool) {
         echoGuard.ended(at: ProcessInfo.processInfo.systemUptime)
-        ttsState = ttsStateBeforeSpeaking ?? "Ready"
+        ttsState = ttsStateBeforeSpeaking ?? String(localized: "Ready")
         ttsStateBeforeSpeaking = nil
         // The reply is out; the next few seconds may hold an answer or a follow-up.
         if microphoneOn { router.openFollowUp(expectsAnswer: expectsAnswer) }
@@ -306,14 +306,14 @@ struct RequestRecord: Identifiable {
     private func recordDelivery(_ text: String, source: FilterSource, backend: String, routeReason: String?,
                                 failure: String? = nil) {
         let name = backend == "poke" ? "Poke" : "Home Assistant"
-        let route = routeReason.map { " (smart routing: \($0))" } ?? ""
+        let route = routeReason.map { String(localized: " (smart routing: \($0))") } ?? ""
         if let failure {
             activity.add(ActivityEntry(date: Date(), text: text, outcome: .failed,
                                        reason: "\(name): \(failure)\(route)", source: source))
             reportFailure()
         } else {
             activity.add(ActivityEntry(date: Date(), text: text, outcome: .sent,
-                                       reason: "Sent to \(name)\(route)", source: source))
+                                       reason: String(localized: "Sent to \(name)") + route, source: source))
             showFlash(.sent, for: 1.5)
             play(.sent)
         }
@@ -327,22 +327,22 @@ struct RequestRecord: Identifiable {
         if recent.count > 5 { recent.removeLast(recent.count - 5) }
         if destination == "home_assistant" {
             guard !haRequestInFlight else {
-                latestDecision = "Request not sent: Home Assistant is still processing the previous request"
+                latestDecision = String(localized: "Request not sent: Home Assistant is still processing the previous request")
                 recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
-                               failure: "still busy with the previous request")
+                               failure: String(localized: "still busy with the previous request"))
                 return
             }
             let server = haURL
             guard let token = HATokenStore.load(), !token.isEmpty else {
-                haState = "Save a Home Assistant token in Settings"
-                latestDecision = "Request not sent: Home Assistant is not configured"
+                haState = String(localized: "Save a Home Assistant token in Settings")
+                latestDecision = String(localized: "Request not sent: Home Assistant is not configured")
                 recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
-                               failure: "not configured")
+                               failure: String(localized: "not configured"))
                 return
             }
             let locale = language.hasPrefix("de") ? "de" : "en"
             haRequestInFlight = true
-            latestDecision = "\(source.rawValue) → sending to Home Assistant"
+            latestDecision = String(localized: "\(source.title) → sending to Home Assistant")
             Task {
                 defer { haRequestInFlight = false }
                 do {
@@ -354,7 +354,7 @@ struct RequestRecord: Identifiable {
                     haConversationAt = ProcessInfo.processInfo.systemUptime
                     haResponse = response.speech
                     haState = response.status
-                    latestDecision = "Home Assistant: \(response.status)"
+                    latestDecision = String(localized: "Home Assistant: \(response.status)")
                     recordDelivery(text, source: source, backend: destination, routeReason: routeReason)
                     if speakReplies, !response.speech.isEmpty {
                         tts.speak(response.speech, expectsAnswer: response.expectsFollowUp)
@@ -364,21 +364,21 @@ struct RequestRecord: Identifiable {
                 } catch {
                     // Never retry a command after a timeout: it might have executed.
                     haState = error.localizedDescription
-                    latestDecision = "Home Assistant: result unconfirmed; no retry"
+                    latestDecision = String(localized: "Home Assistant: result unconfirmed; no retry")
                     recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
                                    failure: error.localizedDescription)
                 }
             }
         } else {
-            latestDecision = "\(source.rawValue) → sending to Poke"
+            latestDecision = String(localized: "\(source.title) → sending to Poke")
             Task {
                 do {
                     try await PokeBackend().send(text)
-                    apiState = "Delivered to Poke"
-                    latestDecision = "\(source.rawValue) → sent to Poke"
+                    apiState = String(localized: "Delivered to Poke")
+                    latestDecision = String(localized: "\(source.title) → sent to Poke")
                     recordDelivery(text, source: source, backend: destination, routeReason: routeReason)
                 } catch {
-                    apiState = "Forwarding unavailable: \(error.localizedDescription)"
+                    apiState = String(localized: "Forwarding unavailable: \(error.localizedDescription)")
                     recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
                                    failure: error.localizedDescription)
                 }
@@ -398,14 +398,14 @@ struct RequestRecord: Identifiable {
     var backendTitle: String {
         switch selectedBackend {
         case "poke": "Poke"
-        case "smart": "Smart routing"
+        case "smart": String(localized: "Smart routing")
         default: "Home Assistant"
         }
     }
     var backendStatus: String {
         switch selectedBackend {
         case "poke": apiState
-        case "smart": "Devices → Home Assistant, rest → \(smartFallback == "home_assistant" ? "Home Assistant" : "Poke")"
+        case "smart": String(localized: "Devices → Home Assistant, rest → \(smartFallback == "home_assistant" ? "Home Assistant" : "Poke")")
         default: haState
         }
     }
@@ -434,7 +434,7 @@ struct RequestRecord: Identifiable {
         if quiet && !wasQuiet && microphoneOn {
             stop()
             pausedByQuietHours = true
-            speechState = "Paused for quiet hours"
+            speechState = String(localized: "Paused for quiet hours")
         } else if !quiet && wasQuiet && pausedByQuietHours {
             start()
         }
@@ -450,17 +450,17 @@ struct RequestRecord: Identifiable {
         guard !haTesting else { return }
         let server = haURL
         guard let token = HATokenStore.load(), !token.isEmpty else {
-            haState = "Save a token first"
+            haState = String(localized: "Save a token first")
             return
         }
         haTesting = true
-        haState = "Checking connection..."
+        haState = String(localized: "Checking connection...")
         Task {
             defer { haTesting = false }
             do {
                 let client = try HomeAssistantClient(server: server, token: token)
                 try await client.testConnection()
-                haState = "Connected; API authenticated"
+                haState = String(localized: "Connected; API authenticated")
             } catch { haState = error.localizedDescription }
         }
     }
@@ -469,12 +469,12 @@ struct RequestRecord: Identifiable {
     func importHAVocabulary(silent: Bool = false) {
         guard !haVocabularyBusy else { return }
         guard let token = HATokenStore.load(), !token.isEmpty else {
-            if !silent { haVocabularyState = "Save a token first" }
+            if !silent { haVocabularyState = String(localized: "Save a token first") }
             return
         }
         let server = haURL
         haVocabularyBusy = true
-        if !silent { haVocabularyState = "Importing..." }
+        if !silent { haVocabularyState = String(localized: "Importing...") }
         Task {
             defer { haVocabularyBusy = false }
             do {
@@ -483,9 +483,9 @@ struct RequestRecord: Identifiable {
                 let words = RequestFilter.vocabularyWords(from: names)
                 haWords = words
                 UserDefaults.standard.set(words.sorted(), forKey: "haVocabularyWords")
-                haVocabularyState = "\(words.count) words from \(names.count) rooms and devices"
+                haVocabularyState = String(localized: "\(words.count) words from \(names.count) rooms and devices")
             } catch HomeAssistantClient.Failure.resultUnconfirmed {
-                if !silent { haVocabularyState = "Could not reach Home Assistant." }
+                if !silent { haVocabularyState = String(localized: "Could not reach Home Assistant.") }
             } catch {
                 if !silent { haVocabularyState = error.localizedDescription }
             }
@@ -494,13 +494,13 @@ struct RequestRecord: Identifiable {
     func clearHAVocabulary() {
         haWords = []
         UserDefaults.standard.removeObject(forKey: "haVocabularyWords")
-        haVocabularyState = "Not imported"
+        haVocabularyState = String(localized: "Not imported")
     }
     func speakHAResponse() {
         guard !haResponse.isEmpty else { return }
         // No need to pause the microphone: input is ignored while we speak.
         tts.speak(haResponse)
-        latestDecision = "Reading Home Assistant reply"
+        latestDecision = String(localized: "Reading Home Assistant reply")
     }
     func saveLanguage(_ value: String) {
         language = value
@@ -512,7 +512,7 @@ struct RequestRecord: Identifiable {
             if enabled { try SMAppService.mainApp.register() }
             else { try SMAppService.mainApp.unregister() }
             startAtLogin = enabled
-        } catch { latestDecision = "Login item error: \(error.localizedDescription)" }
+        } catch { latestDecision = String(localized: "Login item error: \(error.localizedDescription)") }
     }
 }
 
@@ -564,12 +564,12 @@ struct HomeAssistantClient: Sendable {
         case invalidURL, insecureURL, authorization, status(Int), malformed, resultUnconfirmed
         var errorDescription: String? {
             switch self {
-            case .invalidURL: "Enter a Home Assistant URL without credentials, query, or fragment."
-            case .insecureURL: "Use HTTPS for remote Home Assistant. HTTP is allowed only for localhost or a private IPv4 address."
-            case .authorization: "Home Assistant rejected the token."
-            case .status(let code): "Home Assistant returned HTTP \(code); request not retried."
-            case .malformed: "Home Assistant returned an unexpected response."
-            case .resultUnconfirmed: "Connection failed or timed out. The action may have run; check Home Assistant before repeating."
+            case .invalidURL: String(localized: "Enter a Home Assistant URL without credentials, query, or fragment.")
+            case .insecureURL: String(localized: "Use HTTPS for remote Home Assistant. HTTP is allowed only for localhost or a private IPv4 address.")
+            case .authorization: String(localized: "Home Assistant rejected the token.")
+            case .status(let code): String(localized: "Home Assistant returned HTTP \(code); request not retried.")
+            case .malformed: String(localized: "Home Assistant returned an unexpected response.")
+            case .resultUnconfirmed: String(localized: "Connection failed or timed out. The action may have run; check Home Assistant before repeating.")
             }
         }
     }
@@ -661,9 +661,9 @@ struct HomeAssistantClient: Sendable {
             let failures = details["failed"] as? [[String: Any]] ?? []
             let successes = details["success"] as? [[String: Any]] ?? []
             guard !successes.isEmpty || !failures.isEmpty else { throw Failure.malformed }
-            return reply(failures.isEmpty ? "Action completed" : "Some targets failed; check Home Assistant")
-        case "query_answer": return reply("Answer received")
-        case "error": return reply("Not completed: " + (details["code"] as? String ?? "unknown"))
+            return reply(failures.isEmpty ? String(localized: "Action completed") : String(localized: "Some targets failed; check Home Assistant"))
+        case "query_answer": return reply(String(localized: "Answer received"))
+        case "error": return reply(String(localized: "Not completed: \(details["code"] as? String ?? "unknown")"))
         default: throw Failure.malformed
         }
     }

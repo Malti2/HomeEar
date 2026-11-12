@@ -1,0 +1,2976 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    " (smart routing: %@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (Smart-Routing: %@)"
+          }
+        }
+      }
+    },
+    "\"%@\" needs the wake word": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ braucht das Wake Word"
+          }
+        }
+      }
+    },
+    "%@ selected; check for updates": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ausgewählt; suche nach Updates"
+          }
+        }
+      }
+    },
+    "%@ → sending to Home Assistant": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → sende an Home Assistant"
+          }
+        }
+      }
+    },
+    "%@ → sending to Poke": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → sende an Poke"
+          }
+        }
+      }
+    },
+    "%@ → sent to Poke": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ → an Poke gesendet"
+          }
+        }
+      }
+    },
+    "%@, no answer from Apple Intelligence": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, keine Antwort von Apple Intelligence"
+          }
+        }
+      }
+    },
+    "%lld of 4": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld von 4"
+          }
+        }
+      }
+    },
+    "%lld words from %lld rooms and devices": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Wörter aus %lld Räumen und Geräten"
+          }
+        }
+      }
+    },
+    "%lld words imported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Wörter importiert"
+          }
+        }
+      }
+    },
+    ", sounded distant": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ", klang entfernt"
+          }
+        }
+      }
+    },
+    "A %@ update is available; review before installing": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein %@-Update ist verfügbar; prüfe es vor der Installation"
+          }
+        }
+      }
+    },
+    "A language model may download on first use.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Sprachmodell wird beim ersten Mal eventuell heruntergeladen."
+          }
+        }
+      }
+    },
+    "A sentence that starts or ends with one of these names (\"Anna, mach das Licht an\") is meant for them and is not sent.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Satz, der mit einem dieser Namen beginnt oder endet („Anna, mach das Licht an“), ist an die Person gerichtet und wird nicht gesendet."
+          }
+        }
+      }
+    },
+    "A shortcut runs only when the whole sentence matches, so chatting about \"gute Nacht\" does nothing. Without \"Hey Poke\" it also works from background speech: leave the switch on unless you want that. Shortcuts that touch locks, garage doors or ovens still ask first. Shortcuts are stored on this Mac in your settings, not as heard audio or transcripts.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein Kurzbefehl läuft nur, wenn der ganze Satz passt – wer über „gute Nacht“ plaudert, löst nichts aus. Ohne „Hey Poke“ funktioniert er auch aus Hintergrundsprache: lass den Schalter an, außer du willst das. Kurzbefehle zu Schlössern, Garagentoren oder Öfen fragen weiterhin zuerst nach. Kurzbefehle werden in deinen Einstellungen auf diesem Mac gespeichert, nicht als gehörtes Audio oder Mitschrift."
+          }
+        }
+      }
+    },
+    "A soft system sound when HomeEar starts waiting for you, when a request was sent and when something went wrong. The menu bar icon always shows the state: listening, waiting for you, sent, problem or paused.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ein leiser Systemton, wenn HomeEar auf dich wartet, wenn eine Anfrage gesendet wurde und wenn etwas schiefging. Das Menüleisten-Symbol zeigt immer den Zustand: zuhören, wartet auf dich, gesendet, Problem oder pausiert."
+          }
+        }
+      }
+    },
+    "API": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API"
+          }
+        }
+      }
+    },
+    "API key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API-Schlüssel"
+          }
+        }
+      }
+    },
+    "Action completed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktion ausgeführt"
+          }
+        }
+      }
+    },
+    "Activation": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivierung"
+          }
+        }
+      }
+    },
+    "Activity": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivität"
+          }
+        }
+      }
+    },
+    "Add a Poke key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-Schlüssel hinzufügen"
+          }
+        }
+      }
+    },
+    "Add shortcut": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl hinzufügen"
+          }
+        }
+      }
+    },
+    "After a spoken reply, a short answer or follow-up (\"und im Flur auch\") works without the wake word for a few seconds. When a request is almost, but not quite, a command, HomeEar asks \"Did you mean …?\" and waits for yes or no instead of guessing.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einer gesprochenen Antwort funktioniert eine kurze Antwort oder Nachfrage („und im Flur auch“) einige Sekunden lang ohne Wake Word. Wenn eine Anfrage fast, aber nicht ganz ein Befehl ist, fragt HomeEar „Meintest du …?“ und wartet auf Ja oder Nein, statt zu raten."
+          }
+        }
+      }
+    },
+    "Almost a command, not asked: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fast ein Befehl, nicht nachgefragt: %@"
+          }
+        }
+      }
+    },
+    "Anna, Ben": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anna, Ben"
+          }
+        }
+      }
+    },
+    "Answer received": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antwort erhalten"
+          }
+        }
+      }
+    },
+    "Apple Intelligence": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence"
+          }
+        }
+      }
+    },
+    "Apple Intelligence: background speech": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence: Hintergrundsprache"
+          }
+        }
+      }
+    },
+    "Apple Intelligence: meant for me": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence: an mich gerichtet"
+          }
+        }
+      }
+    },
+    "Apple Intelligence: not meant for the assistant": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence: nicht an den Assistenten gerichtet"
+          }
+        }
+      }
+    },
+    "Apple recognition runs on this Mac in fast live mode. Only finalized requests are sent to your selected backend.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Apple-Spracherkennung läuft auf diesem Mac im schnellen Live-Modus. Nur fertig erkannte Anfragen gehen an dein gewähltes Backend."
+          }
+        }
+      }
+    },
+    "Apple · %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple · %@"
+          }
+        }
+      }
+    },
+    "Ask Apple Intelligence about unsure sentences": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence bei unsicheren Sätzen fragen"
+          }
+        }
+      }
+    },
+    "Ask when unsure": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nachfragen, wenn unsicher"
+          }
+        }
+      }
+    },
+    "Asked": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gefragt"
+          }
+        }
+      }
+    },
+    "Asking Apple Intelligence…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frage Apple Intelligence…"
+          }
+        }
+      }
+    },
+    "Audio is not saved": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio wird nicht gespeichert"
+          }
+        }
+      }
+    },
+    "Available on this Mac": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf diesem Mac verfügbar"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurück"
+          }
+        }
+      }
+    },
+    "Background speech filtered (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrundsprache gefiltert (%@)"
+          }
+        }
+      }
+    },
+    "Background speech filtered (score %lld)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hintergrundsprache gefiltert (Wertung %lld)"
+          }
+        }
+      }
+    },
+    "Beta": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beta"
+          }
+        }
+      }
+    },
+    "Beta versions are unfinished and may contain bugs. Use them only if you are comfortable testing.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beta-Versionen sind unfertig und können Fehler enthalten. Nutze sie nur, wenn du gern testest."
+          }
+        }
+      }
+    },
+    "Bundled Poke runtime is missing. Reinstall a complete HomeEar build.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die mitgelieferte Poke-Laufzeit fehlt. Installiere ein vollständiges HomeEar-Build neu."
+          }
+        }
+      }
+    },
+    "CONFIRM": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BESTÄTIGEN"
+          }
+        }
+      }
+    },
+    "Check for updates automatically": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch nach Updates suchen"
+          }
+        }
+      }
+    },
+    "Check for updates...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach Updates suchen..."
+          }
+        }
+      }
+    },
+    "Checking %@ releases...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe %@-Releases..."
+          }
+        }
+      }
+    },
+    "Checking connection...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe Verbindung..."
+          }
+        }
+      }
+    },
+    "Checking...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe..."
+          }
+        }
+      }
+    },
+    "Choose a channel and check for updates": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle einen Kanal und suche nach Updates"
+          }
+        }
+      }
+    },
+    "Choose your connection": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung wählen"
+          }
+        }
+      }
+    },
+    "Clear": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Löschen"
+          }
+        }
+      }
+    },
+    "Clear activity": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktivität löschen"
+          }
+        }
+      }
+    },
+    "Code: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code: %@"
+          }
+        }
+      }
+    },
+    "Comma separated. These make a sentence count as a home request in the proactive filter.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durch Kommas getrennt. Damit zählt ein Satz im proaktiven Filter als Haus-Anfrage."
+          }
+        }
+      }
+    },
+    "Confirm sensitive actions": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sensible Aktionen bestätigen"
+          }
+        }
+      }
+    },
+    "Confirmed — sending": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bestätigt — sende"
+          }
+        }
+      }
+    },
+    "Connect to built-in Assist. Only this server receives your requests; no Poke fallback.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit dem integrierten Assist verbinden. Nur dieser Server bekommt deine Anfragen; kein Poke-Fallback."
+          }
+        }
+      }
+    },
+    "Connect voice tunnel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprach-Tunnel verbinden"
+          }
+        }
+      }
+    },
+    "Connected; API authenticated": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbunden; API authentifiziert"
+          }
+        }
+      }
+    },
+    "Connecting Poke voice tunnel...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbinde Poke-Sprach-Tunnel..."
+          }
+        }
+      }
+    },
+    "Connection failed or timed out. The action may have run; check Home Assistant before repeating.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung fehlgeschlagen oder Zeitüberschreitung. Die Aktion wurde eventuell ausgeführt; prüfe Home Assistant, bevor du es wiederholst."
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiter"
+          }
+        }
+      }
+    },
+    "Conversation": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gespräch"
+          }
+        }
+      }
+    },
+    "Could not reach Home Assistant.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Assistant nicht erreichbar."
+          }
+        }
+      }
+    },
+    "Could not store key in Keychain": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel konnte nicht im Schlüsselbund gespeichert werden"
+          }
+        }
+      }
+    },
+    "DID YOU MEAN?": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MEINTEST DU?"
+          }
+        }
+      }
+    },
+    "Delivered to Poke": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An Poke zugestellt"
+          }
+        }
+      }
+    },
+    "Destination": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ziel"
+          }
+        }
+      }
+    },
+    "Devices → Home Assistant, rest → %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geräte → Home Assistant, Rest → %@"
+          }
+        }
+      }
+    },
+    "Discard": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwerfen"
+          }
+        }
+      }
+    },
+    "Discarded": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verworfen"
+          }
+        }
+      }
+    },
+    "Duplicate": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplikat"
+          }
+        }
+      }
+    },
+    "Duplicate suppressed (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplikat unterdrückt (%@)"
+          }
+        }
+      }
+    },
+    "Enable microphone and speech": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon und Spracherkennung aktivieren"
+          }
+        }
+      }
+    },
+    "English": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Englisch"
+          }
+        }
+      }
+    },
+    "English (US)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Englisch (USA)"
+          }
+        }
+      }
+    },
+    "Enter a Home Assistant URL without credentials, query, or fragment.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gib eine Home-Assistant-URL ohne Zugangsdaten, Query oder Fragment ein."
+          }
+        }
+      }
+    },
+    "Extra sensitive words": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigene sensible Wörter"
+          }
+        }
+      }
+    },
+    "Extra smart-home words": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eigene Smart-Home-Wörter"
+          }
+        }
+      }
+    },
+    "Failed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehlgeschlagen"
+          }
+        }
+      }
+    },
+    "Feedback": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rückmeldung"
+          }
+        }
+      }
+    },
+    "Finish setup": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einrichtung abschließen"
+          }
+        }
+      }
+    },
+    "Follow-up": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nachfrage"
+          }
+        }
+      }
+    },
+    "Follow-up cancelled": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nachfrage abgebrochen"
+          }
+        }
+      }
+    },
+    "Follow-up: command captured": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nachfrage: Befehl erfasst"
+          }
+        }
+      }
+    },
+    "Forget learned corrections": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelernte Korrekturen vergessen"
+          }
+        }
+      }
+    },
+    "Forwarding unavailable: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weiterleiten nicht möglich: %@"
+          }
+        }
+      }
+    },
+    "From": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Von"
+          }
+        }
+      }
+    },
+    "General": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allgemein"
+          }
+        }
+      }
+    },
+    "German": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deutsch"
+          }
+        }
+      }
+    },
+    "German (Germany)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deutsch (Deutschland)"
+          }
+        }
+      }
+    },
+    "German speech is selected by default": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deutsche Sprache ist voreingestellt"
+          }
+        }
+      }
+    },
+    "GitHub Releases": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub Releases"
+          }
+        }
+      }
+    },
+    "GitHub release lookup failed (HTTP %lld).": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub-Release-Abfrage fehlgeschlagen (HTTP %lld)."
+          }
+        }
+      }
+    },
+    "Gute Nacht": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gute Nacht"
+          }
+        }
+      }
+    },
+    "Hey Poke wake word": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wake Word „Hey Poke“"
+          }
+        }
+      }
+    },
+    "Hide": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbergen"
+          }
+        }
+      }
+    },
+    "Home Assistant": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Assistant"
+          }
+        }
+      }
+    },
+    "Home Assistant URL": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home-Assistant-URL"
+          }
+        }
+      }
+    },
+    "Home Assistant answers are read aloud. While HomeEar speaks, and for a moment after, microphone input is ignored so it never hears itself. Poke speaks through its own voice tool either way.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten von Home Assistant werden vorgelesen. Während HomeEar spricht und kurz danach, wird das Mikrofon ignoriert, damit es sich nie selbst hört. Poke spricht in jedem Fall über sein eigenes Sprach-Werkzeug."
+          }
+        }
+      }
+    },
+    "Home Assistant names": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home-Assistant-Namen"
+          }
+        }
+      }
+    },
+    "Home Assistant rejected the token.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Assistant hat das Token abgelehnt."
+          }
+        }
+      }
+    },
+    "Home Assistant returned HTTP %lld; request not retried.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Assistant antwortete mit HTTP %lld; Anfrage nicht wiederholt."
+          }
+        }
+      }
+    },
+    "Home Assistant returned an unexpected response.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Assistant hat eine unerwartete Antwort geliefert."
+          }
+        }
+      }
+    },
+    "Home Assistant: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Assistant: %@"
+          }
+        }
+      }
+    },
+    "Home Assistant: result unconfirmed; no retry": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Assistant: Ergebnis unbestätigt; keine Wiederholung"
+          }
+        }
+      }
+    },
+    "HomeEar needs microphone and Speech Recognition access.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HomeEar braucht Zugriff auf Mikrofon und Spracherkennung."
+          }
+        }
+      }
+    },
+    "HomeEar transcribes on your Mac. Only text that looks like a request is sent to your selected backend. It can still mishear background speech, so pause it when you need privacy.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HomeEar transkribiert auf deinem Mac. Nur Text, der wie eine Anfrage aussieht, geht an dein gewähltes Backend. Es kann Hintergrundsprache trotzdem falsch verstehen, also pausiere es, wenn du Privatsphäre brauchst."
+          }
+        }
+      }
+    },
+    "Ignore distant speech (TV, other rooms)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernte Sprache ignorieren (TV, andere Räume)"
+          }
+        }
+      }
+    },
+    "Import room and device names": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raum- und Gerätenamen importieren"
+          }
+        }
+      }
+    },
+    "Imported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importiert"
+          }
+        }
+      }
+    },
+    "Importing...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importiere..."
+          }
+        }
+      }
+    },
+    "Installing speech model...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installiere Sprachmodell..."
+          }
+        }
+      }
+    },
+    "Keep listening after a reply": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einer Antwort weiter zuhören"
+          }
+        }
+      }
+    },
+    "Kept in memory only and gone when you quit. \"Send anyway\" and \"Wasn't a command\" teach the filter that exact sentence; only a one-way hash of it is saved, never the words.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur im Speicher gehalten und beim Beenden weg. „Trotzdem senden“ und „War kein Befehl“ bringen dem Filter genau diesen Satz bei; gespeichert wird nur ein Einweg-Hash davon, nie die Wörter."
+          }
+        }
+      }
+    },
+    "Key saved; ready to forward": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel gespeichert; bereit zum Weiterleiten"
+          }
+        }
+      }
+    },
+    "LAST HEARD": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZULETZT GEHÖRT"
+          }
+        }
+      }
+    },
+    "Language": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache"
+          }
+        }
+      }
+    },
+    "Last reply": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzte Antwort"
+          }
+        }
+      }
+    },
+    "Learned corrections": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelernte Korrekturen"
+          }
+        }
+      }
+    },
+    "Leave blank to keep your saved key. Keys stay in macOS Keychain.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leer lassen, um den gespeicherten Schlüssel zu behalten. Schlüssel bleiben im macOS-Schlüsselbund."
+          }
+        }
+      }
+    },
+    "Listen locally": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokal zuhören"
+          }
+        }
+      }
+    },
+    "Listening for command…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wartet auf Befehl…"
+          }
+        }
+      }
+    },
+    "Listening on device": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hört auf dem Gerät zu"
+          }
+        }
+      }
+    },
+    "Listening on this Mac": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hört auf diesem Mac zu"
+          }
+        }
+      }
+    },
+    "Local tool ready; tunnel required": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokales Werkzeug bereit; Tunnel erforderlich"
+          }
+        }
+      }
+    },
+    "Local tool unavailable: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lokales Werkzeug nicht verfügbar: %@"
+          }
+        }
+      }
+    },
+    "Locks, garage doors, alarm systems and ovens are never sent from background speech. With \"Hey Poke\" they ask for a yes first. Add your own words, comma separated.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlösser, Garagentore, Alarmanlagen und Öfen werden aus Hintergrundsprache nie gesendet. Mit „Hey Poke“ fragen sie zuerst nach einem Ja. Eigene Wörter durch Kommas getrennt hinzufügen."
+          }
+        }
+      }
+    },
+    "Login item error: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fehler beim Anmeldeobjekt: %@"
+          }
+        }
+      }
+    },
+    "Long-lived access token": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langlebiges Zugriffstoken"
+          }
+        }
+      }
+    },
+    "Microphone access denied. Enable HomeEar in System Settings > Privacy & Security > Microphone.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofonzugriff verweigert. Aktiviere HomeEar in Systemeinstellungen > Datenschutz & Sicherheit > Mikrofon."
+          }
+        }
+      }
+    },
+    "Microphone paused": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon pausiert"
+          }
+        }
+      }
+    },
+    "Names of people at home": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Namen der Personen im Haus"
+          }
+        }
+      }
+    },
+    "Needs \"Hey Poke\"": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Braucht „Hey Poke“"
+          }
+        }
+      }
+    },
+    "Needs macOS 26 with Apple Intelligence": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Braucht macOS 26 mit Apple Intelligence"
+          }
+        }
+      }
+    },
+    "No %@ release is available yet": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch kein %@-Release verfügbar"
+          }
+        }
+      }
+    },
+    "No answer in time": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Antwort rechtzeitig"
+          }
+        }
+      }
+    },
+    "No answer — request discarded": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Antwort — Anfrage verworfen"
+          }
+        }
+      }
+    },
+    "No newer %@ version is available": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine neuere %@-Version verfügbar"
+          }
+        }
+      }
+    },
+    "No usable microphone input is available. Check your audio input device in System Settings and try again.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein nutzbarer Mikrofoneingang verfügbar. Prüfe dein Audio-Eingabegerät in den Systemeinstellungen und versuche es erneut."
+          }
+        }
+      }
+    },
+    "Not available right now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gerade nicht verfügbar"
+          }
+        }
+      }
+    },
+    "Not completed: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht abgeschlossen: %@"
+          }
+        }
+      }
+    },
+    "Not configured": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht konfiguriert"
+          }
+        }
+      }
+    },
+    "Not connected": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht verbunden"
+          }
+        }
+      }
+    },
+    "Not imported": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht importiert"
+          }
+        }
+      }
+    },
+    "Not sent": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht gesendet"
+          }
+        }
+      }
+    },
+    "Not sent: \"%@\" needs the wake word": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht gesendet: „%@“ braucht das Wake Word"
+          }
+        }
+      }
+    },
+    "Not sent: you marked this as not a command": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht gesendet: du hast das als „kein Befehl“ markiert"
+          }
+        }
+      }
+    },
+    "Not started": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nicht gestartet"
+          }
+        }
+      }
+    },
+    "Not sure — asking: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsicher — frage nach: %@"
+          }
+        }
+      }
+    },
+    "Nothing yet. What HomeEar hears and what it does with it shows up here while the app runs.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noch nichts. Was HomeEar hört und was es damit macht, erscheint hier, solange die App läuft."
+          }
+        }
+      }
+    },
+    "Only the selected backend receives your requests. There is no automatic fallback.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur das ausgewählte Backend bekommt deine Anfragen. Es gibt keinen automatischen Fallback."
+          }
+        }
+      }
+    },
+    "Open Poke sign-in": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-Anmeldung öffnen"
+          }
+        }
+      }
+    },
+    "Optional second opinion for sentences that are almost a command. It runs on this Mac with Apple's on-device model, nothing is sent anywhere. HomeEar never asks it about locks, garage doors, alarms or ovens. If the model is missing or too slow, HomeEar asks you instead. Apple Intelligence itself is switched on in System Settings.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optionale zweite Meinung für Sätze, die fast ein Befehl sind. Sie läuft auf diesem Mac mit Apples On-Device-Modell, nichts wird irgendwohin gesendet. HomeEar fragt es nie zu Schlössern, Garagentoren, Alarmanlagen oder Öfen. Fehlt das Modell oder ist es zu langsam, fragt HomeEar stattdessen dich. Apple Intelligence selbst schaltest du in den Systemeinstellungen ein."
+          }
+        }
+      }
+    },
+    "Pause": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        }
+      }
+    },
+    "Pause microphone": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon pausieren"
+          }
+        }
+      }
+    },
+    "Pause microphone during quiet hours": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon in den Ruhezeiten pausieren"
+          }
+        }
+      }
+    },
+    "Paused": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausiert"
+          }
+        }
+      }
+    },
+    "Paused for quiet hours": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pausiert für Ruhezeiten"
+          }
+        }
+      }
+    },
+    "People at home": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personen im Haus"
+          }
+        }
+      }
+    },
+    "Play sounds": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Töne abspielen"
+          }
+        }
+      }
+    },
+    "Please confirm: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitte bestätigen: %@"
+          }
+        }
+      }
+    },
+    "Poke": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke"
+          }
+        }
+      }
+    },
+    "Poke V2 API key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-V2-API-Schlüssel"
+          }
+        }
+      }
+    },
+    "Poke runtime could not start: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-Laufzeit konnte nicht starten: %@"
+          }
+        }
+      }
+    },
+    "Poke sign-in did not complete. Retry sign-in.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-Anmeldung nicht abgeschlossen. Melde dich erneut an."
+          }
+        }
+      }
+    },
+    "Poke sign-in needed": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-Anmeldung nötig"
+          }
+        }
+      }
+    },
+    "Poke signed in; connecting voice tunnel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei Poke angemeldet; verbinde Sprach-Tunnel"
+          }
+        }
+      }
+    },
+    "Poke tunnel stopped. Tap Reconnect.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-Tunnel gestoppt. Tippe auf Neu verbinden."
+          }
+        }
+      }
+    },
+    "Poke voice tunnel connected": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-Sprach-Tunnel verbunden"
+          }
+        }
+      }
+    },
+    "Preparing speech model...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereite Sprachmodell vor..."
+          }
+        }
+      }
+    },
+    "Proactive filter": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proaktiver Filter"
+          }
+        }
+      }
+    },
+    "Proactive request filter": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proaktiver Anfragefilter"
+          }
+        }
+      }
+    },
+    "Proactive requests": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proaktive Anfragen"
+          }
+        }
+      }
+    },
+    "Quiet hours": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruhezeiten"
+          }
+        }
+      }
+    },
+    "Quit": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beenden"
+          }
+        }
+      }
+    },
+    "RECENT REQUESTS": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LETZTE ANFRAGEN"
+          }
+        }
+      }
+    },
+    "Read reply again": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antwort nochmal vorlesen"
+          }
+        }
+      }
+    },
+    "Reading Home Assistant reply": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lese Antwort von Home Assistant vor"
+          }
+        }
+      }
+    },
+    "Reads room and device names once (read-only) and caches the words on this Mac, so the filter knows words like \"Lesecke\" or \"Stehlampe\". Needs the Home Assistant connection. Refreshed quietly at launch after the first import.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liest Raum- und Gerätenamen einmal (nur lesend) und speichert die Wörter auf diesem Mac, damit der Filter Wörter wie „Lesecke“ oder „Stehlampe“ kennt. Braucht die Home-Assistant-Verbindung. Nach dem ersten Import wird beim Start still aktualisiert."
+          }
+        }
+      }
+    },
+    "Ready": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereit"
+          }
+        }
+      }
+    },
+    "Ready to listen": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bereit zum Zuhören"
+          }
+        }
+      }
+    },
+    "Recognition": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erkennung"
+          }
+        }
+      }
+    },
+    "Reconnect voice tunnel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprach-Tunnel neu verbinden"
+          }
+        }
+      }
+    },
+    "Release has an invalid update feed address.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Release hat eine ungültige Update-Feed-Adresse."
+          }
+        }
+      }
+    },
+    "Release is missing its signed update feed.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dem Release fehlt der signierte Update-Feed."
+          }
+        }
+      }
+    },
+    "Remembered sentences": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gemerkte Sätze"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entfernen"
+          }
+        }
+      }
+    },
+    "Replace Poke API key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poke-API-Schlüssel ersetzen"
+          }
+        }
+      }
+    },
+    "Replies": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten"
+          }
+        }
+      }
+    },
+    "Request Filter": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfragefilter"
+          }
+        }
+      }
+    },
+    "Request not sent: Home Assistant is not configured": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage nicht gesendet: Home Assistant ist nicht konfiguriert"
+          }
+        }
+      }
+    },
+    "Request not sent: Home Assistant is still processing the previous request": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfrage nicht gesendet: Home Assistant verarbeitet noch die vorherige Anfrage"
+          }
+        }
+      }
+    },
+    "Requests are forwarded to your Poke agent once your API key is saved. The key stays in macOS Keychain.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfragen gehen an deinen Poke-Agenten, sobald dein API-Schlüssel gespeichert ist. Der Schlüssel bleibt im macOS-Schlüsselbund."
+          }
+        }
+      }
+    },
+    "Requests go directly to built-in Home Assistant Assist. Test the connection before listening. Check results in Home Assistant if a request times out.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfragen gehen direkt an das integrierte Home Assistant Assist. Teste die Verbindung vor dem Zuhören. Prüfe das Ergebnis in Home Assistant, wenn eine Anfrage in ein Timeout läuft."
+          }
+        }
+      }
+    },
+    "Safety": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sicherheit"
+          }
+        }
+      }
+    },
+    "Same request was sent in the last minute": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieselbe Anfrage wurde in der letzten Minute gesendet"
+          }
+        }
+      }
+    },
+    "Save a Home Assistant token in Settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speichere in den Einstellungen ein Home-Assistant-Token"
+          }
+        }
+      }
+    },
+    "Save a token first": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speichere zuerst ein Token"
+          }
+        }
+      }
+    },
+    "Save key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schlüssel speichern"
+          }
+        }
+      }
+    },
+    "Save new key": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neuen Schlüssel speichern"
+          }
+        }
+      }
+    },
+    "Save token": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Token speichern"
+          }
+        }
+      }
+    },
+    "Say \"Hey Poke\" and a request, or speak a likely command. Pause the microphone from the menu bar.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sag „Hey Poke“ und deine Anfrage, oder sprich einen naheliegenden Befehl. Das Mikrofon pausierst du in der Menüleiste."
+          }
+        }
+      }
+    },
+    "Schalte alle Lichter aus": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schalte alle Lichter aus"
+          }
+        }
+      }
+    },
+    "Score %lld (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wertung %lld (%@)"
+          }
+        }
+      }
+    },
+    "Send": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senden"
+          }
+        }
+      }
+    },
+    "Send anyway": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trotzdem senden"
+          }
+        }
+      }
+    },
+    "Send requests to": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anfragen senden an"
+          }
+        }
+      }
+    },
+    "Send this request again": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Anfrage erneut senden"
+          }
+        }
+      }
+    },
+    "Sensitivity": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empfindlichkeit"
+          }
+        }
+      }
+    },
+    "Sent": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesendet"
+          }
+        }
+      }
+    },
+    "Sent to %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesendet an %@"
+          }
+        }
+      }
+    },
+    "Sent: you sent this before": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesendet: das hast du schon einmal gesendet"
+          }
+        }
+      }
+    },
+    "Server": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server"
+          }
+        }
+      }
+    },
+    "Server URL": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Server-URL"
+          }
+        }
+      }
+    },
+    "Set your language": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache einstellen"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen"
+          }
+        }
+      }
+    },
+    "Shortcut": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl"
+          }
+        }
+      }
+    },
+    "Shortcut: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehl: %@"
+          }
+        }
+      }
+    },
+    "Shortcuts": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kurzbefehle"
+          }
+        }
+      }
+    },
+    "Show": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anzeigen"
+          }
+        }
+      }
+    },
+    "Sign in to Poke": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bei Poke anmelden"
+          }
+        }
+      }
+    },
+    "Sign in to Poke in your browser, then return here": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Melde dich im Browser bei Poke an und komm dann hierher zurück"
+          }
+        }
+      }
+    },
+    "Smart": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart"
+          }
+        }
+      }
+    },
+    "Smart routing": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart-Routing"
+          }
+        }
+      }
+    },
+    "Smart routing sends device commands (lights, heating, covers, rooms and your imported names) to Home Assistant, and questions, reminders, timers, calendar and weather to Poke. Each request still goes to exactly one backend, with no fallback or retry on the other. The Activity list shows where each one went.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Smart-Routing schickt Gerätebefehle (Licht, Heizung, Rollläden, Räume und deine importierten Namen) an Home Assistant, Fragen, Erinnerungen, Timer, Kalender und Wetter an Poke. Jede Anfrage geht weiterhin an genau ein Backend, ohne Fallback oder Wiederholung beim anderen. Die Aktivitätsliste zeigt, wohin jede ging."
+          }
+        }
+      }
+    },
+    "Some targets failed; check Home Assistant": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einige Ziele sind fehlgeschlagen; prüfe Home Assistant"
+          }
+        }
+      }
+    },
+    "Speak replies aloud": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Antworten vorlesen"
+          }
+        }
+      }
+    },
+    "Speaking": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spricht"
+          }
+        }
+      }
+    },
+    "Speech": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache"
+          }
+        }
+      }
+    },
+    "Speech language": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache"
+          }
+        }
+      }
+    },
+    "Speech recognition access denied. Enable it in System Settings > Privacy & Security.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zugriff auf die Spracherkennung verweigert. Aktiviere ihn in Systemeinstellungen > Datenschutz & Sicherheit."
+          }
+        }
+      }
+    },
+    "Speech unavailable: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spracherkennung nicht verfügbar: %@"
+          }
+        }
+      }
+    },
+    "Stable": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stabil"
+          }
+        }
+      }
+    },
+    "Start at login": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beim Anmelden starten"
+          }
+        }
+      }
+    },
+    "Start listening": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zuhören starten"
+          }
+        }
+      }
+    },
+    "Start microphone": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon starten"
+          }
+        }
+      }
+    },
+    "Startup": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        }
+      }
+    },
+    "Status": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        }
+      }
+    },
+    "Strict needs a clearer command before sending. Distant speech compares loudness to the room and to your own \"Hey Poke\" voice; only loudness is measured, and it can lower a score but never send a request on its own.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Streng verlangt einen klareren Befehl vor dem Senden. Entfernte Sprache vergleicht die Lautstärke mit dem Raum und mit deiner eigenen „Hey Poke“-Stimme; gemessen wird nur die Lautstärke, sie kann eine Bewertung senken, aber nie von selbst eine Anfrage senden."
+          }
+        }
+      }
+    },
+    "Strict request filter": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strenger Anfragefilter"
+          }
+        }
+      }
+    },
+    "Test connection": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verbindung testen"
+          }
+        }
+      }
+    },
+    "The Poke runtime is included. Sign in once through your browser; HomeEar starts the voice tunnel and reconnects it automatically. Outbound requests still work if the tunnel is offline.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Poke-Laufzeit ist enthalten. Melde dich einmal im Browser an; HomeEar startet den Sprach-Tunnel und verbindet ihn automatisch neu. Ausgehende Anfragen funktionieren auch, wenn der Tunnel offline ist."
+          }
+        }
+      }
+    },
+    "The microphone format could not be prepared.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Mikrofonformat konnte nicht vorbereitet werden."
+          }
+        }
+      }
+    },
+    "The microphone pauses when the window starts and resumes when it ends, unless you paused it yourself.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Mikrofon pausiert, wenn das Zeitfenster beginnt, und läuft danach weiter, außer du hast es selbst pausiert."
+          }
+        }
+      }
+    },
+    "The on-device model is still getting ready": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das On-Device-Modell wird noch vorbereitet"
+          }
+        }
+      }
+    },
+    "The speech model could not be installed. Check your connection and retry.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Sprachmodell konnte nicht installiert werden. Prüfe deine Verbindung und versuche es erneut."
+          }
+        }
+      }
+    },
+    "The token stays in Keychain. Use HTTPS or a private VPN address. Assist uses the selected speech language; no paid AI calls.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Token bleibt im Schlüsselbund. Nutze HTTPS oder eine private VPN-Adresse. Assist nutzt die gewählte Sprache; keine kostenpflichtigen KI-Aufrufe."
+          }
+        }
+      }
+    },
+    "The wake word always sends what follows. Proactive requests are spoken commands without a wake word that pass the request filter.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Wake Word sendet immer, was danach kommt. Proaktive Anfragen sind gesprochene Befehle ohne Wake Word, die den Anfragefilter bestehen."
+          }
+        }
+      }
+    },
+    "This Mac doesn't support Apple Intelligence": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Mac unterstützt Apple Intelligence nicht"
+          }
+        }
+      }
+    },
+    "This session": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Sitzung"
+          }
+        }
+      }
+    },
+    "This speech language is not available on this Mac.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Sprache ist auf diesem Mac nicht verfügbar."
+          }
+        }
+      }
+    },
+    "Token stays in Keychain. Use HTTPS or a private VPN IP. Expose the devices you want to control to Assist in Home Assistant.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Das Token bleibt im Schlüsselbund. Nutze HTTPS oder eine private VPN-IP. Gib in Home Assistant die Geräte für Assist frei, die du steuern willst."
+          }
+        }
+      }
+    },
+    "Too short or long": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zu kurz oder zu lang"
+          }
+        }
+      }
+    },
+    "Tool error: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Werkzeugfehler: %@"
+          }
+        }
+      }
+    },
+    "Transcription stopped: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transkription gestoppt: %@"
+          }
+        }
+      }
+    },
+    "Tunnel disconnected; retrying (%lld/3)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tunnel getrennt; neuer Versuch (%lld/3)"
+          }
+        }
+      }
+    },
+    "Tunnel stopped": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tunnel gestoppt"
+          }
+        }
+      }
+    },
+    "Turn on Apple Intelligence in System Settings": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schalte Apple Intelligence in den Systemeinstellungen ein"
+          }
+        }
+      }
+    },
+    "Unknown": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unbekannt"
+          }
+        }
+      }
+    },
+    "Until": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bis"
+          }
+        }
+      }
+    },
+    "Update": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update"
+          }
+        }
+      }
+    },
+    "Update channel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update-Kanal"
+          }
+        }
+      }
+    },
+    "Update check failed: %@": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update-Suche fehlgeschlagen: %@"
+          }
+        }
+      }
+    },
+    "Updater is not ready; try again later": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updater nicht bereit; versuche es später erneut"
+          }
+        }
+      }
+    },
+    "Use HTTPS for remote Home Assistant. HTTP is allowed only for localhost or a private IPv4 address.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nutze HTTPS für Home Assistant im Internet. HTTP ist nur für localhost oder eine private IPv4-Adresse erlaubt."
+          }
+        }
+      }
+    },
+    "Use imported names in the filter": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importierte Namen im Filter verwenden"
+          }
+        }
+      }
+    },
+    "Verifying %@ update information...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfe %@-Update-Informationen..."
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
+    "Voice": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stimme"
+          }
+        }
+      }
+    },
+    "Voice identifier (optional)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stimmen-Kennung (optional)"
+          }
+        }
+      }
+    },
+    "Voice tunnel": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprach-Tunnel"
+          }
+        }
+      }
+    },
+    "Waiting for Poke sign-in": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warte auf Poke-Anmeldung"
+          }
+        }
+      }
+    },
+    "Waiting for your answer…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warte auf deine Antwort…"
+          }
+        }
+      }
+    },
+    "Wake word": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wake Word"
+          }
+        }
+      }
+    },
+    "Wake word cancelled": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wake Word abgebrochen"
+          }
+        }
+      }
+    },
+    "Wake word heard — listening for command…": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wake Word gehört — warte auf Befehl…"
+          }
+        }
+      }
+    },
+    "Wake word timed out — listening normally": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wake Word abgelaufen — höre normal weiter zu"
+          }
+        }
+      }
+    },
+    "Wake word: command captured": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wake Word: Befehl erfasst"
+          }
+        }
+      }
+    },
+    "Wasn't a command": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "War kein Befehl"
+          }
+        }
+      }
+    },
+    "When I say": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn ich sage"
+          }
+        }
+      }
+    },
+    "When unclear": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wenn unklar"
+          }
+        }
+      }
+    },
+    "You marked this as not a command": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du hast das als „kein Befehl“ markiert"
+          }
+        }
+      }
+    },
+    "You said no": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du hast Nein gesagt"
+          }
+        }
+      }
+    },
+    "Your private voice gateway": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dein privates Sprach-Gateway"
+          }
+        }
+      }
+    },
+    "Your shortcuts": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Kurzbefehle"
+          }
+        }
+      }
+    },
+    "Your words": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine Wörter"
+          }
+        }
+      }
+    },
+    "https://...": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "https://..."
+          }
+        }
+      }
+    },
+    "not configured": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nicht konfiguriert"
+          }
+        }
+      }
+    },
+    "pool, tresor": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pool, tresor"
+          }
+        }
+      }
+    },
+    "sensitive action (%@)": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sensible Aktion (%@)"
+          }
+        }
+      }
+    },
+    "still busy with the previous request": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "noch mit der vorherigen Anfrage beschäftigt"
+          }
+        }
+      }
+    },
+    "ventilator, kamin": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ventilator, kamin"
+          }
+        }
+      }
+    },
+    "“Hey Poke” wake word": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wake Word „Hey Poke“"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -11,7 +11,7 @@ enum IntelligenceAvailability: Equatable {
 
     var message: String {
         switch self {
-        case .available: "Available on this Mac"
+        case .available: String(localized: "Available on this Mac")
         case .unavailable(let reason): reason
         }
     }
@@ -45,16 +45,16 @@ enum AppleIntelligence {
             return .available
         case .unavailable(let reason):
             switch reason {
-            case .deviceNotEligible: return .unavailable("This Mac doesn't support Apple Intelligence")
-            case .appleIntelligenceNotEnabled: return .unavailable("Turn on Apple Intelligence in System Settings")
-            case .modelNotReady: return .unavailable("The on-device model is still getting ready")
-            @unknown default: return .unavailable("Not available right now")
+            case .deviceNotEligible: return .unavailable(String(localized: "This Mac doesn't support Apple Intelligence"))
+            case .appleIntelligenceNotEnabled: return .unavailable(String(localized: "Turn on Apple Intelligence in System Settings"))
+            case .modelNotReady: return .unavailable(String(localized: "The on-device model is still getting ready"))
+            @unknown default: return .unavailable(String(localized: "Not available right now"))
             }
         @unknown default:
-            return .unavailable("Not available right now")
+            return .unavailable(String(localized: "Not available right now"))
         }
         #else
-        return .unavailable("Needs macOS 26 with Apple Intelligence")
+        return .unavailable(String(localized: "Needs macOS 26 with Apple Intelligence"))
         #endif
     }
 

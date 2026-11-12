@@ -60,6 +60,9 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :NSSpeechRecognitionUsageDescription' "$APP/Contents/Info.plist"
           test -x "$APP/Contents/Resources/Runtime/node"
           test -s "$APP/Contents/Resources/Runtime/poke.cjs"
+          # String catalogs must have been compiled for German, including the permission prompts.
+          test -s "$APP/Contents/Resources/de.lproj/Localizable.strings"
+          test -s "$APP/Contents/Resources/de.lproj/InfoPlist.strings"
           "$APP/Contents/Resources/Runtime/node" --version
           "$APP/Contents/Resources/Runtime/node" "$APP/Contents/Resources/Runtime/poke.cjs" --version
           find "$APP/Contents/Resources/Runtime" -maxdepth 1 -type f -printf '%f\n' 2>/dev/null || ls -la "$APP/Contents/Resources/Runtime"
@@ -140,6 +143,34 @@ jobs:
             echo
             echo "SCREENSHOT_${NAME}_BASE64_END"
           done
+      - name: Capture German windows on runner
+        run: |
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*/Build/Products/Release/HomeEar.app' -print -quit)
+          mkdir -p ui-capture-de
+          "$APP/Contents/MacOS/HomeEar" -AppleLanguages "(de)" -AppleLocale de_DE --capture-ui "$PWD/ui-capture-de" > ui-capture-de.log 2>&1 &
+          PID=$!
+          for ATTEMPT in $(seq 1 45); do
+            kill -0 "$PID" 2>/dev/null || break
+            sleep 1
+          done
+          if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID"
+            echo 'German UI capture timed out'
+            cat ui-capture-de.log
+            exit 1
+          fi
+          wait "$PID"
+          cat ui-capture-de.log
+          grep -q HOME_EAR_UI_CAPTURE_SUCCEEDED ui-capture-de.log
+          for NAME in panel settings-general settings-speech settings-filter settings-shortcuts settings-activity settings-poke settings-assist settings-update onboarding; do
+            test -s "ui-capture-de/HomeEar-$NAME.png"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HomeEar-window-screenshots-de
+          path: ui-capture-de/*.png
+          if-no-files-found: error
+          retention-days: 3
       - uses: actions/upload-artifact@v4
         with:
           name: HomeEar-window-screenshots

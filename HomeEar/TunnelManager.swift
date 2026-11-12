@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 
 @MainActor final class TunnelManager: ObservableObject {
-    @Published private(set) var state = "Not connected"
+    @Published private(set) var state = String(localized: "Not connected")
     @Published private(set) var loginURL: URL?
     @Published private(set) var loginCode = ""
     private var process: Process?
@@ -38,11 +38,11 @@ import AppKit
         process?.terminate()
         process = nil
         output = nil
-        state = "Tunnel stopped"
+        state = String(localized: "Tunnel stopped")
     }
     private func run(_ arguments: [String], mode: String) {
         guard let node, let cli else {
-            state = "Bundled Poke runtime is missing. Reinstall a complete HomeEar build."
+            state = String(localized: "Bundled Poke runtime is missing. Reinstall a complete HomeEar build.")
             return
         }
         requestedStop = false
@@ -69,8 +69,8 @@ import AppKit
             try task.run()
             process = task
             output = pipe
-            state = mode == "login" ? "Waiting for Poke sign-in" : "Connecting Poke voice tunnel..."
-        } catch { state = "Poke runtime could not start: \(error.localizedDescription)" }
+            state = mode == "login" ? String(localized: "Waiting for Poke sign-in") : String(localized: "Connecting Poke voice tunnel...")
+        } catch { state = String(localized: "Poke runtime could not start: \(error.localizedDescription)") }
     }
     private func consume(_ data: Data) {
         guard let chunk = String(data: data, encoding: .utf8) else { return }
@@ -80,13 +80,13 @@ import AppKit
             if let range = capture.range(of: pattern, options: .regularExpression),
                let url = URL(string: String(capture[range])) {
                 loginURL = url
-                state = "Sign in to Poke in your browser, then return here"
+                state = String(localized: "Sign in to Poke in your browser, then return here")
             }
             if let range = capture.range(of: #"Your login code is:\s*([A-Za-z0-9-]+)"#, options: .regularExpression) {
                 loginCode = String(capture[range]).replacingOccurrences(of: "Your login code is:", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             }
         } else if capture.localizedCaseInsensitiveContains("connected to upstream") || capture.localizedCaseInsensitiveContains("tunnel is active!") {
-            state = "Poke voice tunnel connected"
+            state = String(localized: "Poke voice tunnel connected")
             reconnects = 0
         }
     }
@@ -97,16 +97,16 @@ import AppKit
         guard !requestedStop else { return }
         if mode == "login" {
             if code == 0 && hasCredentials {
-                state = "Poke signed in; connecting voice tunnel"
+                state = String(localized: "Poke signed in; connecting voice tunnel")
                 reconnects = 0
                 start()
-            } else { state = "Poke sign-in did not complete. Retry sign-in." }
+            } else { state = String(localized: "Poke sign-in did not complete. Retry sign-in.") }
             return
         }
-        if !hasCredentials { state = "Poke sign-in needed"; return }
-        guard reconnects < 3 else { state = "Poke tunnel stopped. Tap Reconnect."; return }
+        if !hasCredentials { state = String(localized: "Poke sign-in needed"); return }
+        guard reconnects < 3 else { state = String(localized: "Poke tunnel stopped. Tap Reconnect."); return }
         reconnects += 1
-        state = "Tunnel disconnected; retrying (\(reconnects)/3)"
+        state = String(localized: "Tunnel disconnected; retrying (\(reconnects)/3)")
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(Double(self?.reconnects ?? 1) * 5))
             self?.start()

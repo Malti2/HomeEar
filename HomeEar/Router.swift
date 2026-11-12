@@ -128,7 +128,7 @@ struct PendingRequest: Equatable {
             // through, no proactive filter — the user explicitly invoked us.
             if isFinal, isCancel(trimmed) {
                 setMode(.idle)
-                onDecision?("Wake word cancelled")
+                onDecision?(String(localized: "Wake word cancelled"))
             } else if isFinal, let phrase = QuickPhrases.match(trimmed, wakeWordUsed: true, in: config.quickPhrases) {
                 runShortcut(phrase, audio: audio)
             } else if isFinal, isSubstantial(trimmed) {
@@ -142,12 +142,12 @@ struct PendingRequest: Equatable {
             switch Self.answer(to: trimmed) {
             case .yes:
                 setMode(.idle)
-                onDecision?("Confirmed — sending")
+                onDecision?(String(localized: "Confirmed — sending"))
                 deliver(pending.text, source: pending.source)
             case .no:
                 setMode(.idle)
-                onDecision?("Discarded")
-                emit(pending.text, .cancelled, "You said no")
+                onDecision?(String(localized: "Discarded"))
+                emit(pending.text, .cancelled, String(localized: "You said no"))
             case nil:
                 break // not an answer; keep waiting until the window closes
             }
@@ -169,15 +169,15 @@ struct PendingRequest: Equatable {
         // distant speech or the safety gate.
         switch config.feedback.verdict(for: command) {
         case .ignore:
-            onDecision?("Not sent: you marked this as not a command")
-            emit(command, .filtered, "You marked this as not a command")
+            onDecision?(String(localized: "Not sent: you marked this as not a command"))
+            emit(command, .filtered, String(localized: "You marked this as not a command"))
             return
         case .send where cue != .far:
             if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
-                onDecision?("Not sent: \"\(term)\" needs the wake word")
-                emit(command, .filtered, "\"\(term)\" needs the wake word")
+                onDecision?(String(localized: "Not sent: \"\(term)\" needs the wake word"))
+                emit(command, .filtered, String(localized: "\"\(term)\" needs the wake word"))
             } else {
-                onDecision?("Sent: you sent this before")
+                onDecision?(String(localized: "Sent: you sent this before"))
                 deliver(command, source: .proactive)
             }
             return
@@ -188,16 +188,16 @@ struct PendingRequest: Equatable {
                                               addressees: config.addressees, audio: cue) {
         case .accept(let source, let reason):
             if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
-                onDecision?("Not sent: \"\(term)\" needs the wake word")
-                emit(command, .filtered, "\"\(term)\" needs the wake word")
+                onDecision?(String(localized: "Not sent: \"\(term)\" needs the wake word"))
+                emit(command, .filtered, String(localized: "\"\(term)\" needs the wake word"))
                 return
             }
-            onDecision?("\(source.rawValue): \(reason)")
+            onDecision?("\(source.title): \(reason)")
             deliver(command, source: source)
         case .uncertain(let reason):
             if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
-                onDecision?("Not sent: \"\(term)\" needs the wake word")
-                emit(command, .filtered, "\"\(term)\" needs the wake word")
+                onDecision?(String(localized: "Not sent: \"\(term)\" needs the wake word"))
+                emit(command, .filtered, String(localized: "\"\(term)\" needs the wake word"))
             } else if config.useLanguageModel, cue != .far, let judge {
                 consult(command, reason: reason, judge: judge)
             } else {
@@ -223,14 +223,14 @@ struct PendingRequest: Equatable {
         let deadline = Date().addingTimeInterval(window)
         setMode(.followUp(deadline: deadline, expectsAnswer: expectsAnswer))
         armTimer(for: deadline)
-        if expectsAnswer { onDecision?("Waiting for your answer…") }
+        if expectsAnswer { onDecision?(String(localized: "Waiting for your answer…")) }
     }
 
     /// Panel button: send the request that was asked about.
     func confirmPending() {
         guard case .awaitingConfirmation(let pending, _) = mode else { return }
         setMode(.idle)
-        onDecision?("Confirmed — sending")
+        onDecision?(String(localized: "Confirmed — sending"))
         deliver(pending.text, source: pending.source)
     }
 
@@ -238,8 +238,8 @@ struct PendingRequest: Equatable {
     func discardPending() {
         guard case .awaitingConfirmation(let pending, _) = mode else { return }
         setMode(.idle)
-        onDecision?("Discarded")
-        emit(pending.text, .cancelled, "Discarded")
+        onDecision?(String(localized: "Discarded"))
+        emit(pending.text, .cancelled, String(localized: "Discarded"))
     }
 
     /// Activity list: send a sentence the filter held back. Still asks first for sensitive requests.
@@ -261,7 +261,7 @@ struct PendingRequest: Equatable {
             // "Hey Poke, abbrechen" — never forward the cancel word itself.
             if isFinal {
                 setMode(.idle)
-                onDecision?("Wake word cancelled")
+                onDecision?(String(localized: "Wake word cancelled"))
             }
         } else if isSubstantial(match.commandText) {
             // "Hey Poke, mach das Licht an" — the command is right there.
@@ -269,7 +269,7 @@ struct PendingRequest: Equatable {
                 runShortcut(phrase, audio: audio)
             } else if isFinal {
                 setMode(.idle)
-                onDecision?("Wake word: command captured")
+                onDecision?(String(localized: "Wake word: command captured"))
                 learn(audio)
                 deliverChecked(match.commandText, source: .wakeWord)
             } else {
@@ -278,7 +278,7 @@ struct PendingRequest: Equatable {
         } else {
             // Lone "Hey Poke" — capture the next utterance.
             armCapture()
-            onDecision?("Wake word heard — listening for command…")
+            onDecision?(String(localized: "Wake word heard — listening for command…"))
         }
     }
 
@@ -286,7 +286,7 @@ struct PendingRequest: Equatable {
     private func handleFollowUp(_ text: String, expectsAnswer: Bool, audio: AudioFeatures?) -> Bool {
         if isCancel(text) {
             setMode(.idle)
-            onDecision?("Follow-up cancelled")
+            onDecision?(String(localized: "Follow-up cancelled"))
             return true
         }
         // Distant speech never answers; let it fall through to the normal filter.
@@ -296,7 +296,7 @@ struct PendingRequest: Equatable {
             : RequestFilter.looksLikeFollowUp(text, extra: config.extraEntities)
         guard accepted else { return false }
         setMode(.idle)
-        onDecision?("Follow-up: command captured")
+        onDecision?(String(localized: "Follow-up: command captured"))
         deliverChecked(text, source: .followUp)
         return true
     }
@@ -304,7 +304,7 @@ struct PendingRequest: Equatable {
     /// "Gute Nacht" → the text the user stored for it. Still goes through the safety gate.
     private func runShortcut(_ phrase: QuickPhrase, audio: AudioFeatures?) {
         setMode(.idle)
-        onDecision?("Shortcut: \(phrase.trigger)")
+        onDecision?(String(localized: "Shortcut: \(phrase.trigger)"))
         deliverChecked(phrase.text, source: .shortcut)
     }
 
@@ -319,8 +319,8 @@ struct PendingRequest: Equatable {
         if config.askWhenUnsure, cue != .far, canAsk(command) {
             ask(PendingRequest(text: command, source: .proactive, reason: reason))
         } else {
-            onDecision?("Background speech filtered (\(reason))")
-            emit(command, .filtered, "Almost a command, not asked: \(reason)")
+            onDecision?(String(localized: "Background speech filtered (\(reason))"))
+            emit(command, .filtered, String(localized: "Almost a command, not asked: \(reason)"))
         }
     }
 
@@ -328,7 +328,7 @@ struct PendingRequest: Equatable {
     private func consult(_ command: String, reason: String, judge: @escaping @Sendable (String) async -> Bool?) {
         let key = normalizedKey(command)
         guard judging.insert(key).inserted else { return }
-        onDecision?("Asking Apple Intelligence…")
+        onDecision?(String(localized: "Asking Apple Intelligence…"))
         let timeout = config.judgeTimeout
         let started = generation
         Task { @MainActor [weak self] in
@@ -338,13 +338,13 @@ struct PendingRequest: Equatable {
             guard started == self.generation else { return }
             switch verdict {
             case true?:
-                self.onDecision?("Apple Intelligence: meant for me")
+                self.onDecision?(String(localized: "Apple Intelligence: meant for me"))
                 self.deliver(command, source: .intelligence)
             case false?:
-                self.onDecision?("Apple Intelligence: background speech")
-                self.emit(command, .filtered, "Apple Intelligence: not meant for the assistant")
+                self.onDecision?(String(localized: "Apple Intelligence: background speech"))
+                self.emit(command, .filtered, String(localized: "Apple Intelligence: not meant for the assistant"))
             case nil:
-                self.askOrFilter(command, reason: "\(reason), no answer from Apple Intelligence", cue: .normal)
+                self.askOrFilter(command, reason: String(localized: "\(reason), no answer from Apple Intelligence"), cue: .normal)
             }
         }
     }
@@ -368,7 +368,7 @@ struct PendingRequest: Equatable {
         let deadline = Date().addingTimeInterval(config.confirmationWindow)
         setMode(.awaitingConfirmation(pending, deadline: deadline))
         armTimer(for: deadline)
-        onDecision?(pending.sensitive ? "Please confirm: \(pending.reason)" : "Not sure — asking: \(pending.reason)")
+        onDecision?(pending.sensitive ? String(localized: "Please confirm: \(pending.reason)") : String(localized: "Not sure — asking: \(pending.reason)"))
         emit(pending.text, .asked, pending.reason, source: pending.source)
         onAskBack?(pending)
     }
@@ -377,7 +377,7 @@ struct PendingRequest: Equatable {
     /// garage, alarm or oven.
     private func deliverChecked(_ text: String, source: FilterSource) {
         if config.confirmSensitive, let term = SensitiveActions.match(in: text, extra: config.extraSensitive) {
-            ask(PendingRequest(text: text, source: source, reason: "sensitive action (\(term))", sensitive: true))
+            ask(PendingRequest(text: text, source: source, reason: String(localized: "sensitive action (\(term))"), sensitive: true))
         } else {
             deliver(text, source: source)
         }
@@ -408,12 +408,12 @@ struct PendingRequest: Equatable {
     private func expire() {
         let message: String?
         switch mode {
-        case .awaitingCommand: message = "Wake word timed out — listening normally"
+        case .awaitingCommand: message = String(localized: "Wake word timed out — listening normally")
         // A closing follow-up window is routine; don't bury the last real decision under it.
         case .followUp: message = nil
         case .awaitingConfirmation(let pending, _):
-            message = "No answer — request discarded"
-            emit(pending.text, .cancelled, "No answer in time")
+            message = String(localized: "No answer — request discarded")
+            emit(pending.text, .cancelled, String(localized: "No answer in time"))
         case .idle: return
         }
         setMode(.idle)
@@ -497,8 +497,8 @@ struct PendingRequest: Equatable {
         let now = Date()
         deliveries.removeAll { now.timeIntervalSince($0.at) > config.duplicateWindow }
         guard !deliveries.contains(where: { $0.key == key }) else {
-            onDecision?("Duplicate suppressed (\(source.rawValue.lowercased()))")
-            emit(text, .duplicate, "Same request was sent in the last minute", source: source)
+            onDecision?(String(localized: "Duplicate suppressed (\(source.title.lowercased()))"))
+            emit(text, .duplicate, String(localized: "Same request was sent in the last minute"), source: source)
             return
         }
         deliveries.append((key, now))

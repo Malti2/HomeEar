@@ -17,8 +17,8 @@ import Network
         listener.stateUpdateHandler = { [weak self] status in
             Task { @MainActor in
                 switch status {
-                case .ready: self?.state?.ttsState = "Local tool ready; tunnel required"
-                case .failed(let error): self?.state?.ttsState = "Tool error: \(error.localizedDescription)"
+                case .ready: self?.state?.ttsState = String(localized: "Local tool ready; tunnel required")
+                case .failed(let error): self?.state?.ttsState = String(localized: "Tool error: \(error.localizedDescription)")
                 default: break
                 }
             }

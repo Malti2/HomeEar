@@ -7,12 +7,12 @@ import Speech
         case microphone, recognition, locale, model, format, inputUnavailable
         var errorDescription: String? {
             switch self {
-            case .microphone: "Microphone access denied. Enable HomeEar in System Settings > Privacy & Security > Microphone."
-            case .recognition: "Speech recognition access denied. Enable it in System Settings > Privacy & Security."
-            case .locale: "This speech language is not available on this Mac."
-            case .model: "The speech model could not be installed. Check your connection and retry."
-            case .format: "The microphone format could not be prepared."
-            case .inputUnavailable: "No usable microphone input is available. Check your audio input device in System Settings and try again."
+            case .microphone: String(localized: "Microphone access denied. Enable HomeEar in System Settings > Privacy & Security > Microphone.")
+            case .recognition: String(localized: "Speech recognition access denied. Enable it in System Settings > Privacy & Security.")
+            case .locale: String(localized: "This speech language is not available on this Mac.")
+            case .model: String(localized: "The speech model could not be installed. Check your connection and retry.")
+            case .format: String(localized: "The microphone format could not be prepared.")
+            case .inputUnavailable: String(localized: "No usable microphone input is available. Check your audio input device in System Settings and try again.")
             }
         }
     }
@@ -45,7 +45,7 @@ import Speech
         let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults, .fastResults], attributeOptions: [])
         do {
             if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-                state?.speechState = "Installing speech model..."
+                state?.speechState = String(localized: "Installing speech model...")
                 try await request.downloadAndInstall()
             }
         } catch { throw Failure.model }
@@ -63,10 +63,10 @@ import Speech
                     // only finals are judged by the proactive filter or delivered.
                     if !text.isEmpty { self?.state?.receive(text, isFinal: result.isFinal) }
                 }
-            } catch { self?.state?.speechState = "Transcription stopped: \(error.localizedDescription)" }
+            } catch { self?.state?.speechState = String(localized: "Transcription stopped: \(error.localizedDescription)") }
         }
         do {
-            state?.speechState = "Preparing speech model..."
+            state?.speechState = String(localized: "Preparing speech model...")
             try await analyzer.prepareToAnalyze(in: target)
             try await analyzer.start(inputSequence: stream)
             let input = engine.inputNode

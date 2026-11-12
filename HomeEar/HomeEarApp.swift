@@ -49,14 +49,14 @@ struct PanelView: View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("HomeEar").font(.title3.weight(.semibold))
-                Label(state.microphoneOn ? "Listening on this Mac" : "Microphone paused",
+                Label(LocalizedStringKey(state.microphoneOn ? "Listening on this Mac" : "Microphone paused"),
                       systemImage: state.microphoneOn ? "circle.fill" : "pause.circle")
                     .font(.caption)
                     .foregroundStyle(state.microphoneOn ? Color.green : Color.secondary)
             }
             if let pending = state.pendingConfirmation {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(pending.sensitive ? "CONFIRM" : "DID YOU MEAN?").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                    Text(LocalizedStringKey(pending.sensitive ? "CONFIRM" : "DID YOU MEAN?")).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                     Text(pending.text).font(.subheadline).lineLimit(3)
                     HStack {
                         Button("Send") { state.router.confirmPending() }.buttonStyle(.borderedProminent)
@@ -81,7 +81,7 @@ struct PanelView: View {
                 HStack {
                     Text("Speech").foregroundStyle(.secondary)
                     Spacer()
-                    Text("Apple · \(state.language == "de-DE" ? "German" : "English")")
+                    Text("Apple · \(state.language == "de-DE" ? String(localized: "German") : String(localized: "English"))")
                 }
                 Divider()
                 HStack(alignment: .top) {
@@ -108,11 +108,11 @@ struct PanelView: View {
                     }
                 }
             }
-            if !state.microphoneOn && state.speechState != "Not started" && state.speechState != "Paused" {
+            if !state.microphoneOn && state.speechState != String(localized: "Not started") && state.speechState != String(localized: "Paused") {
                 Text(state.speechState).font(.caption).foregroundStyle(.secondary)
             }
             HStack {
-                Button(state.microphoneOn ? "Pause" : "Start listening") {
+                Button(LocalizedStringKey(state.microphoneOn ? "Pause" : "Start listening")) {
                     state.microphoneOn ? state.stop() : state.start()
                 }.buttonStyle(.borderedProminent)
                 Spacer()
@@ -222,7 +222,7 @@ struct HomeEarSettingsView: View {
         }
     }
 
-    private func note(_ text: String) -> some View {
+    private func note(_ text: LocalizedStringKey) -> some View {
         Text(text).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
     }
 
@@ -276,7 +276,7 @@ struct HomeEarSettingsView: View {
                     Text("English (US)").tag("en-US")
                 }
                 LabeledContent("Status", value: state.speechState)
-                Button(state.microphoneOn ? "Pause microphone" : "Start microphone") {
+                Button(LocalizedStringKey(state.microphoneOn ? "Pause microphone" : "Start microphone")) {
                     state.microphoneOn ? state.stop() : state.start()
                 }
             } header: { Text("Recognition") } footer: {
@@ -441,7 +441,7 @@ struct HomeEarSettingsView: View {
             }
             Section("Voice tunnel") {
                 LabeledContent("Status", value: state.tunnel.state)
-                Button(state.tunnel.hasCredentials ? "Reconnect voice tunnel" : "Sign in to Poke") { state.tunnel.start() }
+                Button(LocalizedStringKey(state.tunnel.hasCredentials ? "Reconnect voice tunnel" : "Sign in to Poke")) { state.tunnel.start() }
                 if state.tunnel.loginURL != nil {
                     Button("Open Poke sign-in") { state.tunnel.openLogin() }
                     if !state.tunnel.loginCode.isEmpty { Text("Code: \(state.tunnel.loginCode)").font(.caption.monospaced()) }
@@ -463,7 +463,7 @@ struct HomeEarSettingsView: View {
                     Button("Save token") {
                         if state.saveHAToken(haToken) { haToken = "" }
                     }.disabled(haToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Button(state.haTesting ? "Checking..." : "Test connection") { state.testHomeAssistant() }
+                    Button(LocalizedStringKey(state.haTesting ? "Checking..." : "Test connection")) { state.testHomeAssistant() }
                         .disabled(state.haTesting)
                 }
                 LabeledContent("Status", value: state.haState)
@@ -553,7 +553,7 @@ struct UpdateSettingsView: View {
     @ObservedObject var updates: UpdateChecker
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+            LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? String(localized: "Unknown"))
             Picker("Update channel", selection: Binding(get: { updates.channel }, set: { updates.setChannel($0) })) {
                 Text("Stable").tag(UpdateChannel.stable)
                 Text("Beta").tag(UpdateChannel.beta)

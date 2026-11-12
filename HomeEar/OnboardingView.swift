@@ -67,11 +67,11 @@ struct OnboardingView: View {
                         HStack {
                             Group { if showKey { TextField("Poke V2 API key", text: $key) } else { SecureField("Poke V2 API key", text: $key) } }
                                 .textFieldStyle(.roundedBorder)
-                            Button(showKey ? "Hide" : "Show") { showKey.toggle() }
+                            Button(LocalizedStringKey(showKey ? "Hide" : "Show")) { showKey.toggle() }
                         }
                         Button("Save key") {
-                            if KeyStore.save(key) { key = ""; state.apiState = "Key saved; ready to forward" }
-                            else { state.apiState = "Could not store key in Keychain" }
+                            if KeyStore.save(key) { key = ""; state.apiState = String(localized: "Key saved; ready to forward") }
+                            else { state.apiState = String(localized: "Could not store key in Keychain") }
                         }.disabled(key.isEmpty)
                         Text(state.apiState).font(.caption).foregroundStyle(.secondary)
                         }
@@ -86,7 +86,7 @@ struct OnboardingView: View {
                         Toggle("Strict request filter", isOn: $state.strictFilter)
                         if state.selectedBackend == "poke" {
                         Text("The Poke runtime is included. Sign in once through your browser; HomeEar starts the voice tunnel and reconnects it automatically. Outbound requests still work if the tunnel is offline.").font(.caption).foregroundStyle(.secondary)
-                        Button(state.tunnel.hasCredentials ? "Connect voice tunnel" : "Sign in to Poke") { state.tunnel.start() }
+                        Button(LocalizedStringKey(state.tunnel.hasCredentials ? "Connect voice tunnel" : "Sign in to Poke")) { state.tunnel.start() }
                         if state.tunnel.loginURL != nil {
                             Button("Open Poke sign-in") { state.tunnel.openLogin() }
                             if !state.tunnel.loginCode.isEmpty { Text("Code: \(state.tunnel.loginCode)").font(.caption.monospaced()) }

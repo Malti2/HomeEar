@@ -7,6 +7,17 @@ enum FilterSource: String {
     case followUp = "Follow-up"
     case shortcut = "Shortcut"
     case intelligence = "Apple Intelligence"
+
+    /// Display name; the raw value stays the stable identifier.
+    var title: String {
+        switch self {
+        case .wakeWord: String(localized: "Wake word")
+        case .proactive: String(localized: "Proactive filter")
+        case .followUp: String(localized: "Follow-up")
+        case .shortcut: String(localized: "Shortcut")
+        case .intelligence: String(localized: "Apple Intelligence")
+        }
+    }
 }
 
 enum FilterDecision {
@@ -52,7 +63,7 @@ struct RequestFilter {
         let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let words = value.split(whereSeparator: \.isWhitespace)
         guard value.count >= 12, words.count >= 3, value.count <= 400 else {
-            return .reject(reason: "Too short or long")
+            return .reject(reason: String(localized: "Too short or long"))
         }
         let command = WakeWordDetector.stripLeadingWakeWord(from: value) ?? value
         let lower = command.lowercased(with: posix)
@@ -87,15 +98,16 @@ struct RequestFilter {
         // Audio only ever lowers the score: loud speech alone is no reason to forward.
         if audio == .far { score -= 2 }
 
+        let distantNote = audio == .far ? String(localized: ", sounded distant") : ""
         let threshold = strict ? 4 : 3
         if score >= threshold {
-            return .accept(source: .proactive, reason: "Score \(score) (\(hits.joined(separator: "+")))")
+            return .accept(source: .proactive, reason: String(localized: "Score \(score) (\(hits.joined(separator: "+")))"))
         }
         let commandShaped = hits.contains { ["verb", "infinitive", "polite", "question"].contains($0) }
         if score == threshold - 1, hits.contains("entity"), commandShaped {
-            return .uncertain(reason: "Score \(score) (\(hits.joined(separator: "+")))\(audio == .far ? ", sounded distant" : "")")
+            return .uncertain(reason: String(localized: "Score \(score) (\(hits.joined(separator: "+")))") + distantNote)
         }
-        return .reject(reason: "Background speech filtered (score \(score)\(audio == .far ? ", sounded distant" : ""))")
+        return .reject(reason: String(localized: "Background speech filtered (score \(score))") + distantNote)
     }
 
     /// Short utterance right after a spoken reply that reads like a continuation
