@@ -370,6 +370,7 @@ struct HomeEarSettingsView: View {
     private func outcomeColor(_ outcome: ActivityOutcome) -> Color {
         switch outcome {
         case .sent: .green
+        case .failed: .red
         case .asked: .orange
         case .filtered, .cancelled, .duplicate: .secondary
         }

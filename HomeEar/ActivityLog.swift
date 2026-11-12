@@ -2,11 +2,12 @@ import Foundation
 import CryptoKit
 
 enum ActivityOutcome: String {
-    case sent, filtered, asked, cancelled, duplicate
+    case sent, failed, filtered, asked, cancelled, duplicate
 
     var label: String {
         switch self {
         case .sent: "Sent"
+        case .failed: "Failed"
         case .filtered: "Not sent"
         case .asked: "Asked"
         case .cancelled: "Discarded"

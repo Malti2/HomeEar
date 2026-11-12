@@ -349,17 +349,18 @@ struct PendingRequest: Equatable {
     }
 
     private func expire() {
-        let message: String
+        let message: String?
         switch mode {
         case .awaitingCommand: message = "Wake word timed out — listening normally"
-        case .followUp: message = "Follow-up window closed"
+        // A closing follow-up window is routine; don't bury the last real decision under it.
+        case .followUp: message = nil
         case .awaitingConfirmation(let pending, _):
             message = "No answer — request discarded"
             emit(pending.text, .cancelled, "No answer in time")
         case .idle: return
         }
         setMode(.idle)
-        onDecision?(message)
+        if let message { onDecision?(message) }
     }
 
     private func windowEnd(of mode: Mode) -> Date? {

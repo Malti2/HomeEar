@@ -65,7 +65,7 @@ struct RequestRecord: Identifiable {
     @Published var latestDecision = ""
     @Published var completedSetup = UserDefaults.standard.bool(forKey: "setupComplete")
     @Published var language = UserDefaults.standard.string(forKey: "language") ?? "de-DE"
-    @Published var startAtLogin = false
+    @Published var startAtLogin = SMAppService.mainApp.status == .enabled
     @Published var voiceID = UserDefaults.standard.string(forKey: "voiceID") ?? ""
     @Published var strictFilter = UserDefaults.standard.object(forKey: "strictFilter") as? Bool ?? true {
         didSet { UserDefaults.standard.set(strictFilter, forKey: "strictFilter") }
@@ -294,28 +294,42 @@ struct RequestRecord: Identifiable {
         let features = isFinal && audioCuesEnabled ? levels.snapshot(at: ProcessInfo.processInfo.systemUptime) : nil
         router.receive(text, isFinal: isFinal, audio: features)
     }
+    /// Records the outcome of a delivery attempt, once it is known.
+    private func recordDelivery(_ text: String, source: FilterSource, backend: String, routeReason: String?,
+                                failure: String? = nil) {
+        let name = backend == "poke" ? "Poke" : "Home Assistant"
+        let route = routeReason.map { " (smart routing: \($0))" } ?? ""
+        if let failure {
+            activity.add(ActivityEntry(date: Date(), text: text, outcome: .failed,
+                                       reason: "\(name): \(failure)\(route)", source: source))
+            reportFailure()
+        } else {
+            activity.add(ActivityEntry(date: Date(), text: text, outcome: .sent,
+                                       reason: "Sent to \(name)\(route)", source: source))
+            showFlash(.sent, for: 1.5)
+            play(.sent)
+        }
+    }
     private func forwardRequest(text: String, source: FilterSource) {
         // Capture the selected destination before suspension: one request, one backend.
         let (destination, routeReason) = resolveDestination(for: text)
         guard completedSetup || destination == "home_assistant" else { return }
-        activity.add(ActivityEntry(date: Date(), text: text, outcome: .sent,
-                                   reason: "Sent to \(destination == "poke" ? "Poke" : "Home Assistant")"
-                                       + (routeReason.map { " (smart routing: \($0))" } ?? ""),
-                                   source: source))
-        showFlash(.sent, for: 1.5)
-        play(.sent)
         recent.removeAll { $0.text == text }
         recent.insert(RequestRecord(text: text, source: source, date: Date()), at: 0)
         if recent.count > 5 { recent.removeLast(recent.count - 5) }
         if destination == "home_assistant" {
             guard !haRequestInFlight else {
                 latestDecision = "Request not sent: Home Assistant is still processing the previous request"
+                recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
+                               failure: "still busy with the previous request")
                 return
             }
             let server = haURL
             guard let token = HATokenStore.load(), !token.isEmpty else {
                 haState = "Save a Home Assistant token in Settings"
                 latestDecision = "Request not sent: Home Assistant is not configured"
+                recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
+                               failure: "not configured")
                 return
             }
             let locale = language.hasPrefix("de") ? "de" : "en"
@@ -333,6 +347,7 @@ struct RequestRecord: Identifiable {
                     haResponse = response.speech
                     haState = response.status
                     latestDecision = "Home Assistant: \(response.status)"
+                    recordDelivery(text, source: source, backend: destination, routeReason: routeReason)
                     if speakReplies, !response.speech.isEmpty {
                         tts.speak(response.speech, expectsAnswer: response.expectsFollowUp)
                     } else if response.expectsFollowUp, microphoneOn {
@@ -342,7 +357,8 @@ struct RequestRecord: Identifiable {
                     // Never retry a command after a timeout: it might have executed.
                     haState = error.localizedDescription
                     latestDecision = "Home Assistant: result unconfirmed; no retry"
-                    reportFailure()
+                    recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
+                                   failure: error.localizedDescription)
                 }
             }
         } else {
@@ -352,9 +368,11 @@ struct RequestRecord: Identifiable {
                     try await PokeBackend().send(text)
                     apiState = "Delivered to Poke"
                     latestDecision = "\(source.rawValue) → sent to Poke"
+                    recordDelivery(text, source: source, backend: destination, routeReason: routeReason)
                 } catch {
                     apiState = "Forwarding unavailable: \(error.localizedDescription)"
-                    reportFailure()
+                    recordDelivery(text, source: source, backend: destination, routeReason: routeReason,
+                                   failure: error.localizedDescription)
                 }
             }
         }
