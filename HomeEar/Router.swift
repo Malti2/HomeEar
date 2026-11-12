@@ -53,6 +53,10 @@ struct PendingRequest: Equatable {
         /// Sensitive requests from background speech are never sent, whatever this says.
         var confirmSensitive = true
         var extraSensitive: Set<String> = []
+        /// Ask the on-device language model about sentences that are almost a command.
+        var useLanguageModel = false
+        /// How long to wait for it before falling back to asking the user.
+        var judgeTimeout: TimeInterval = 4
         /// Personal shortcuts; matched on the whole utterance only.
         var quickPhrases: [QuickPhrase] = []
         /// Corrections from the activity list; they decide exact sentences before the filter does.
@@ -79,6 +83,8 @@ struct PendingRequest: Equatable {
     var onPendingChanged: ((PendingRequest?) -> Void)?
     /// Everything the router decided about what it heard, with the reason, for the activity list.
     var onEvent: ((ActivityEntry) -> Void)?
+    /// Second opinion on a borderline sentence: true = meant for the assistant, nil = no answer.
+    var judge: (@Sendable (String) async -> Bool?)?
 
     private enum Mode {
         case idle
@@ -89,6 +95,10 @@ struct PendingRequest: Equatable {
     private var mode: Mode = .idle
     private var deliveries: [(key: String, at: Date)] = []
     private var asked: [(key: String, at: Date)] = []
+    /// Sentences currently with the language model, so a repeated partial doesn't ask twice.
+    private var judging: Set<String> = []
+    /// Bumped when the microphone stops so a late answer can't send anything afterwards.
+    private var generation = 0
 
     func receive(_ text: String, isFinal: Bool, audio: AudioFeatures? = nil) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -188,11 +198,10 @@ struct PendingRequest: Equatable {
             if let term = SensitiveActions.match(in: command, extra: config.extraSensitive) {
                 onDecision?("Not sent: \"\(term)\" needs the wake word")
                 emit(command, .filtered, "\"\(term)\" needs the wake word")
-            } else if config.askWhenUnsure, cue != .far, canAsk(command) {
-                ask(PendingRequest(text: command, source: .proactive, reason: reason))
+            } else if config.useLanguageModel, cue != .far, let judge {
+                consult(command, reason: reason, judge: judge)
             } else {
-                onDecision?("Background speech filtered (\(reason))")
-                emit(command, .filtered, "Almost a command, not asked: \(reason)")
+                askOrFilter(command, reason: reason, cue: cue)
             }
         case .reject(let reason):
             onDecision?(reason)
@@ -241,6 +250,7 @@ struct PendingRequest: Equatable {
     /// Call when the microphone stops so a pending window can't leak
     /// into the next session.
     func reset() {
+        generation += 1
         setMode(.idle)
     }
 
@@ -302,6 +312,53 @@ struct PendingRequest: Equatable {
         switch mode {
         case .awaitingCommand, .awaitingConfirmation: true
         case .idle, .followUp: false
+        }
+    }
+
+    private func askOrFilter(_ command: String, reason: String, cue: AudioCue) {
+        if config.askWhenUnsure, cue != .far, canAsk(command) {
+            ask(PendingRequest(text: command, source: .proactive, reason: reason))
+        } else {
+            onDecision?("Background speech filtered (\(reason))")
+            emit(command, .filtered, "Almost a command, not asked: \(reason)")
+        }
+    }
+
+    /// Asks the on-device model. Slow or missing answers fall back to asking the user.
+    private func consult(_ command: String, reason: String, judge: @escaping @Sendable (String) async -> Bool?) {
+        let key = normalizedKey(command)
+        guard judging.insert(key).inserted else { return }
+        onDecision?("Asking Apple Intelligence…")
+        let timeout = config.judgeTimeout
+        let started = generation
+        Task { @MainActor [weak self] in
+            let verdict = await Self.race(timeout) { await judge(command) }
+            guard let self else { return }
+            self.judging.remove(key)
+            guard started == self.generation else { return }
+            switch verdict {
+            case true?:
+                self.onDecision?("Apple Intelligence: meant for me")
+                self.deliver(command, source: .intelligence)
+            case false?:
+                self.onDecision?("Apple Intelligence: background speech")
+                self.emit(command, .filtered, "Apple Intelligence: not meant for the assistant")
+            case nil:
+                self.askOrFilter(command, reason: "\(reason), no answer from Apple Intelligence", cue: .normal)
+            }
+        }
+    }
+
+    private static func race(_ seconds: TimeInterval, _ work: @escaping @Sendable () async -> Bool?) async -> Bool? {
+        await withTaskGroup(of: Bool?.self) { group in
+            group.addTask { await work() }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000))
+                return nil
+            }
+            let first = await group.next() ?? nil
+            group.cancelAll()
+            return first
         }
     }
 

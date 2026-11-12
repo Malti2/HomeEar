@@ -218,6 +218,7 @@ struct HomeEarSettingsView: View {
             }
             .formStyle(.grouped)
             .navigationTitle(pane.title)
+            .onAppear { state.refreshIntelligence() }
         }
     }
 
@@ -323,6 +324,13 @@ struct HomeEarSettingsView: View {
                 TextField("Names of people at home", text: $state.householdNames, prompt: Text("Anna, Ben"))
             } header: { Text("People at home") } footer: {
                 note("A sentence that starts or ends with one of these names (\"Anna, mach das Licht an\") is meant for them and is not sent.")
+            }
+            Section {
+                Toggle("Ask Apple Intelligence about unsure sentences", isOn: $state.useAppleIntelligence)
+                    .disabled(!state.intelligence.isAvailable)
+                LabeledContent("Status", value: state.intelligence.message)
+            } header: { Text("Apple Intelligence") } footer: {
+                note("Optional second opinion for sentences that are almost a command. It runs on this Mac with Apple's on-device model, nothing is sent anywhere. HomeEar never asks it about locks, garage doors, alarms or ovens. If the model is missing or too slow, HomeEar asks you instead. Apple Intelligence itself is switched on in System Settings.")
             }
             Section {
                 Toggle("Confirm sensitive actions", isOn: $state.confirmSensitive)

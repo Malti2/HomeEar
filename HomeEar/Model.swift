@@ -140,6 +140,12 @@ struct RequestRecord: Identifiable {
     @Published var smartFallback = UserDefaults.standard.string(forKey: "smartFallback") ?? "poke" {
         didSet { UserDefaults.standard.set(smartFallback, forKey: "smartFallback") }
     }
+    /// Optional second opinion from Apple's on-device model for almost-commands.
+    @Published var useAppleIntelligence = UserDefaults.standard.bool(forKey: "useAppleIntelligence") {
+        didSet { UserDefaults.standard.set(useAppleIntelligence, forKey: "useAppleIntelligence") }
+    }
+    @Published private(set) var intelligence = AppleIntelligence.availability()
+    func refreshIntelligence() { intelligence = AppleIntelligence.availability() }
     @Published var askWhenUnsure = UserDefaults.standard.object(forKey: "askWhenUnsure") as? Bool ?? true {
         didSet { UserDefaults.standard.set(askWhenUnsure, forKey: "askWhenUnsure") }
     }
@@ -187,6 +193,7 @@ struct RequestRecord: Identifiable {
     init() {
         router.voiceProfile.referenceSNR = UserDefaults.standard.object(forKey: "voiceReferenceSNR") as? Double
         router.onVoiceReferenceChanged = { UserDefaults.standard.set($0, forKey: "voiceReferenceSNR") }
+        router.judge = { text in await AppleIntelligence.isRequest(text) }
         router.onEvent = { [weak self] entry in self?.activity.add(entry) }
         router.onAskBack = { [weak self] pending in self?.askBack(pending) }
         router.onPendingChanged = { [weak self] pending in self?.pendingConfirmation = pending }
@@ -287,6 +294,7 @@ struct RequestRecord: Identifiable {
         router.config.audioCuesEnabled = audioCuesEnabled
         router.config.followUpEnabled = followUpEnabled
         router.config.askWhenUnsure = askWhenUnsure
+        router.config.useLanguageModel = useAppleIntelligence && intelligence.isAvailable
         router.config.confirmSensitive = confirmSensitive
         router.config.quickPhrases = quickPhrases
         router.config.feedback = feedback

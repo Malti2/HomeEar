@@ -6,6 +6,7 @@ enum FilterSource: String {
     case proactive = "Proactive filter"
     case followUp = "Follow-up"
     case shortcut = "Shortcut"
+    case intelligence = "Apple Intelligence"
 }
 
 enum FilterDecision {
