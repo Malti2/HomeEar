@@ -8,12 +8,14 @@ private final class Counter: @unchecked Sendable {
     var value = 0
 }
 
+/// Lets the router's background task finish. File-level so the @MainActor tests don't
+/// send the (non-Sendable) test case across an isolation boundary.
+private func settle() async throws {
+    try await Task.sleep(nanoseconds: 250_000_000)
+}
+
 /// The language model itself can't run in CI, so the router is driven with stand-in judges.
 final class IntelligenceTests: XCTestCase {
-    private func settle() async throws {
-        try await Task.sleep(nanoseconds: 250_000_000)
-    }
-
     @MainActor func testYesDeliversWithItsOwnSource() async throws {
         let router = UtteranceRouter()
         router.config.useLanguageModel = true
